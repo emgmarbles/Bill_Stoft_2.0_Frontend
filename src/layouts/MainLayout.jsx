@@ -69,6 +69,7 @@ export const navGroups = [
     group: 'INVENTORY & LOGISTICS',
     items: [
       { text: 'Products Catalog', path: '/products', icon: <CategoryIcon /> },
+      { text: 'GST Products', path: '/gst-products', icon: <CategoryIcon /> },
       { text: 'Current Stock', path: '/current-stock', icon: <InventoryIcon /> },
       { text: 'Purchase Validation', path: '/purchase-validation', icon: <ShippingIcon /> },
       { text: 'Delivery Sectors', path: '/delivery-sectors', icon: <ShippingIcon /> },

@@ -5,6 +5,10 @@ import theme from './theme/theme';
 import { AuthProvider } from './context/AuthContext';
 import MainLayout from './layouts/MainLayout';
 import Dashboard from './pages/Dashboard';
+import GSTInvoiceList from './pages/gst/GSTInvoiceList';
+import GSTCustomersPage from './pages/gst/GSTCustomersPage';
+import GSTSuppliersPage from './pages/gst/GSTSuppliersPage';
+import GSTProductsPage from './pages/gst/GSTProductsPage';
 
 function PlaceholderPage({ title }) {
   return (
@@ -25,11 +29,12 @@ export default function App() {
             <Routes>
               <Route path="/" element={<Dashboard />} />
               <Route path="/bills/*" element={<PlaceholderPage title="Local Sale Bills" />} />
-              <Route path="/gst-bills/*" element={<PlaceholderPage title="GST Sell Bills" />} />
-              <Route path="/purchase-gst-bills/*" element={<PlaceholderPage title="Purchase GST Bills" />} />
+              <Route path="/gst-bills/*" element={<GSTInvoiceList type="sale" />} />
+              <Route path="/purchase-gst-bills/*" element={<GSTInvoiceList type="purchase" />} />
               <Route path="/customers/*" element={<PlaceholderPage title="Customers" />} />
-              <Route path="/gst-customers/*" element={<PlaceholderPage title="GST Customers" />} />
-              <Route path="/purchase-gst-suppliers/*" element={<PlaceholderPage title="Purchase Suppliers" />} />
+              <Route path="/gst-customers/*" element={<GSTCustomersPage />} />
+              <Route path="/purchase-gst-suppliers/*" element={<GSTSuppliersPage />} />
+              <Route path="/gst-products/*" element={<GSTProductsPage />} />
               <Route path="/products/*" element={<PlaceholderPage title="Products" />} />
               <Route path="/current-stock/*" element={<PlaceholderPage title="Current Stock" />} />
               <Route path="/purchase-validation/*" element={<PlaceholderPage title="Purchase Validation" />} />

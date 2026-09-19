@@ -1,0 +1,286 @@
+import React from 'react';
+import { Dialog } from 'primereact/dialog';
+import { Button } from 'primereact/button';
+import { Tag } from 'primereact/tag';
+import { Divider } from 'primereact/divider';
+import { formatINR, formatDate } from '../../utils/formatters';
+
+export default function GSTInvoiceDetailDialog({ visible, invoice, onHide, onEdit }) {
+  if (!invoice) return null;
+
+  const isSale = invoice.invoice_type === 'sale';
+  const partyTitle = isSale ? 'Buyer / Bill To' : 'Supplier / Vendor';
+
+  const getStatusSeverity = (status) => {
+    switch (status) {
+      case 'paid':
+        return 'success';
+      case 'partial':
+        return 'warning';
+      case 'pending':
+      default:
+        return 'danger';
+    }
+  };
+
+  const handlePrint = () => {
+    window.print();
+  };
+
+  const footerContent = (
+    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%' }}>
+      <div>
+        <Button
+          label="Print Tax Invoice"
+          icon="pi pi-print"
+          className="p-button-outlined"
+          onClick={handlePrint}
+          style={{ marginRight: '8px' }}
+        />
+        {onEdit && (
+          <Button
+            label="Edit Invoice"
+            icon="pi pi-pencil"
+            className="p-button-secondary p-button-outlined"
+            onClick={() => {
+              onHide();
+              onEdit(invoice);
+            }}
+          />
+        )}
+      </div>
+      <Button label="Close" icon="pi pi-times" onClick={onHide} className="p-button-text" />
+    </div>
+  );
+
+  return (
+    <Dialog
+      header={
+        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+          <i className="pi pi-file" style={{ fontSize: '1.25rem', color: 'var(--primary-color)' }} />
+          <div>
+            <span style={{ fontWeight: 700, fontSize: '1.1rem' }}>
+              {isSale ? 'Tax Invoice' : 'Purchase Tax Invoice'} #{invoice.invoice_no}
+            </span>
+            <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginLeft: '12px' }}>
+              Date: {formatDate(invoice.invoice_date)}
+            </span>
+          </div>
+          <Tag
+            value={(invoice.payment_status || 'PENDING').toUpperCase()}
+            severity={getStatusSeverity(invoice.payment_status)}
+            style={{ marginLeft: 'auto', marginRight: '24px' }}
+          />
+        </div>
+      }
+      visible={visible}
+      style={{ width: '900px', maxWidth: '96vw' }}
+      footer={footerContent}
+      onHide={onHide}
+      className="gst-invoice-detail-dialog"
+    >
+      <div style={{ padding: '8px 4px' }}>
+        {/* Top Information Grid */}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '16px', marginBottom: '20px' }}>
+          {/* Party Box */}
+          <div style={{ background: '#f8fafc', padding: '16px', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
+            <div style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: '6px' }}>
+              {partyTitle}
+            </div>
+            <div style={{ fontWeight: 700, fontSize: '1.05rem', color: 'var(--text-main)' }}>
+              {invoice.party_name || (isSale ? invoice.customer?.name : invoice.supplier?.name) || 'Cash / Unregistered'}
+            </div>
+            {invoice.party_gstin && (
+              <div style={{ marginTop: '4px', fontSize: '0.85rem', color: 'var(--primary-color)', fontWeight: 600 }}>
+                GSTIN: <span className="tabular-nums">{invoice.party_gstin}</span>
+              </div>
+            )}
+            {invoice.party_address && (
+              <div style={{ marginTop: '6px', fontSize: '0.85rem', color: 'var(--text-muted)', lineHeight: 1.4 }}>
+                {invoice.party_address}
+              </div>
+            )}
+          </div>
+
+          {/* Invoice Summary Box */}
+          <div style={{ background: '#f8fafc', padding: '16px', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
+            <div style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: '8px' }}>
+              Invoice & Payment Details
+            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', fontSize: '0.875rem' }}>
+              <div>
+                <span style={{ color: 'var(--text-muted)' }}>Invoice No:</span>{' '}
+                <strong className="tabular-nums">{invoice.invoice_no}</strong>
+              </div>
+              <div>
+                <span style={{ color: 'var(--text-muted)' }}>Date:</span>{' '}
+                <strong className="tabular-nums">{formatDate(invoice.invoice_date)}</strong>
+              </div>
+              <div>
+                <span style={{ color: 'var(--text-muted)' }}>GST Rate:</span>{' '}
+                <strong className="tabular-nums">{invoice.gst_rate_percent || 18}%</strong>
+              </div>
+              <div>
+                <span style={{ color: 'var(--text-muted)' }}>Payment Mode:</span>{' '}
+                <strong style={{ textTransform: 'capitalize' }}>{invoice.payment_method || 'Cheque'}</strong>
+              </div>
+              {invoice.cheque_no && (
+                <div style={{ gridColumn: 'span 2' }}>
+                  <span style={{ color: 'var(--text-muted)' }}>Cheque/Ref No:</span>{' '}
+                  <strong className="tabular-nums">{invoice.cheque_no}</strong>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+
+        {/* Items Table */}
+        <div style={{ border: '1px solid #e2e8f0', borderRadius: '8px', overflow: 'hidden', marginBottom: '20px' }}>
+          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.875rem' }}>
+            <thead>
+              <tr style={{ background: '#f1f5f9', borderBottom: '1px solid #e2e8f0', textAlign: 'left' }}>
+                <th style={{ padding: '10px 12px', width: '50px' }}>#</th>
+                <th style={{ padding: '10px 12px' }}>Product / Material</th>
+                <th style={{ padding: '10px 12px', width: '100px' }}>HSN</th>
+                <th style={{ padding: '10px 12px', textAlign: 'right', width: '110px' }}>Rate (₹)</th>
+                <th style={{ padding: '10px 12px', textAlign: 'right', width: '100px' }}>Quantity</th>
+                <th style={{ padding: '10px 12px', textAlign: 'right', width: '130px' }}>Amount (₹)</th>
+              </tr>
+            </thead>
+            <tbody>
+              {invoice.items && invoice.items.length > 0 ? (
+                invoice.items.map((item, index) => (
+                  <tr key={item.id || index} style={{ borderBottom: '1px solid #f1f5f9' }}>
+                    <td style={{ padding: '10px 12px', color: 'var(--text-muted)' }} className="tabular-nums">
+                      {index + 1}
+                    </td>
+                    <td style={{ padding: '10px 12px', fontWeight: 600 }}>
+                      {item.product?.name || item.product_name || `Product #${item.product_id || item.product}`}
+                    </td>
+                    <td style={{ padding: '10px 12px', color: 'var(--text-muted)' }} className="tabular-nums">
+                      {item.product?.hsn_code || '-'}
+                    </td>
+                    <td style={{ padding: '10px 12px', textAlign: 'right' }} className="tabular-nums">
+                      ₹{formatINR(item.price)}
+                    </td>
+                    <td style={{ padding: '10px 12px', textAlign: 'right' }} className="tabular-nums">
+                      {formatINR(item.quantity)}
+                    </td>
+                    <td style={{ padding: '10px 12px', textAlign: 'right', fontWeight: 600 }} className="tabular-nums">
+                      ₹{formatINR(item.amount)}
+                    </td>
+                  </tr>
+                ))
+              ) : (
+                <tr>
+                  <td colSpan="6" style={{ padding: '24px', textAlign: 'center', color: 'var(--text-muted)' }}>
+                    No line items attached to this invoice.
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+
+        {/* Transport Details (If present) */}
+        {invoice.transport_detail && (
+          <div style={{ background: '#f8fafc', padding: '14px 16px', borderRadius: '8px', border: '1px solid #e2e8f0', marginBottom: '20px' }}>
+            <div style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: '8px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+              <i className="pi pi-truck" style={{ color: 'var(--primary-color)' }} /> Transport & Dispatch Logistics
+            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '10px', fontSize: '0.85rem' }}>
+              {invoice.transport_detail.truck_no && (
+                <div>
+                  <span style={{ color: 'var(--text-muted)' }}>Truck No:</span>{' '}
+                  <strong style={{ textTransform: 'uppercase' }}>{invoice.transport_detail.truck_no}</strong>
+                </div>
+              )}
+              {invoice.transport_detail.transporter_name && (
+                <div>
+                  <span style={{ color: 'var(--text-muted)' }}>Transporter:</span>{' '}
+                  <strong>{invoice.transport_detail.transporter_name}</strong>
+                </div>
+              )}
+              {invoice.transport_detail.driver_name && (
+                <div>
+                  <span style={{ color: 'var(--text-muted)' }}>Driver:</span>{' '}
+                  <strong>{invoice.transport_detail.driver_name} {invoice.transport_detail.driver_phone ? `(${invoice.transport_detail.driver_phone})` : ''}</strong>
+                </div>
+              )}
+              {invoice.transport_detail.lr_no && (
+                <div>
+                  <span style={{ color: 'var(--text-muted)' }}>LR / Bilty No:</span>{' '}
+                  <strong>{invoice.transport_detail.lr_no}</strong>
+                </div>
+              )}
+              {Number(invoice.transport_detail.freight_amount) > 0 && (
+                <div>
+                  <span style={{ color: 'var(--text-muted)' }}>Freight:</span>{' '}
+                  <strong className="tabular-nums">₹{formatINR(invoice.transport_detail.freight_amount)}</strong>
+                </div>
+              )}
+              {Number(invoice.transport_detail.advance_paid) > 0 && (
+                <div>
+                  <span style={{ color: 'var(--text-muted)' }}>Advance Paid:</span>{' '}
+                  <strong className="tabular-nums">₹{formatINR(invoice.transport_detail.advance_paid)}</strong>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* Calculations Breakdown */}
+        <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '12px' }}>
+          <div style={{ width: '360px', background: '#f8fafc', padding: '16px', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px', fontSize: '0.875rem' }}>
+              <span style={{ color: 'var(--text-muted)' }}>Taxable Subtotal:</span>
+              <span className="tabular-nums" style={{ fontWeight: 600 }}>₹{formatINR(invoice.total_amount)}</span>
+            </div>
+
+            {Number(invoice.cgst_amount) > 0 && (
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '6px', fontSize: '0.85rem' }}>
+                <span style={{ color: 'var(--text-muted)' }}>CGST ({Number(invoice.gst_rate_percent || 18) / 2}%):</span>
+                <span className="tabular-nums">₹{formatINR(invoice.cgst_amount)}</span>
+              </div>
+            )}
+
+            {Number(invoice.sgst_amount) > 0 && (
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '6px', fontSize: '0.85rem' }}>
+                <span style={{ color: 'var(--text-muted)' }}>SGST ({Number(invoice.gst_rate_percent || 18) / 2}%):</span>
+                <span className="tabular-nums">₹{formatINR(invoice.sgst_amount)}</span>
+              </div>
+            )}
+
+            {Number(invoice.igst_amount) > 0 && (
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '6px', fontSize: '0.85rem' }}>
+                <span style={{ color: 'var(--text-muted)' }}>IGST ({invoice.gst_rate_percent || 18}%):</span>
+                <span className="tabular-nums">₹{formatINR(invoice.igst_amount)}</span>
+              </div>
+            )}
+
+            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '10px', fontSize: '0.85rem', color: 'var(--text-muted)' }}>
+              <span>Total GST Tax:</span>
+              <span className="tabular-nums" style={{ fontWeight: 600 }}>₹{formatINR(invoice.gst_amount)}</span>
+            </div>
+
+            <Divider style={{ margin: '8px 0' }} />
+
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '1.15rem' }}>
+              <span style={{ fontWeight: 700, color: 'var(--text-main)' }}>Grand Total:</span>
+              <span className="tabular-nums" style={{ fontWeight: 800, color: 'var(--primary-color)' }}>
+                ₹{formatINR(invoice.grand_total_amount)}
+              </span>
+            </div>
+
+            {Number(invoice.payment_amount) > 0 && (
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '8px', fontSize: '0.85rem', color: 'var(--status-success)' }}>
+                <span>Paid Amount:</span>
+                <span className="tabular-nums" style={{ fontWeight: 600 }}>₹{formatINR(invoice.payment_amount)}</span>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+    </Dialog>
+  );
+}
