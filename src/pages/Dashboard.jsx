@@ -2,7 +2,6 @@ import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from 'primereact/button';
 import { Tag } from 'primereact/tag';
-import { Divider } from 'primereact/divider';
 
 export default function Dashboard() {
   const navigate = useNavigate();
@@ -15,8 +14,8 @@ export default function Dashboard() {
       badge: 'Local Billing',
       badgeSeverity: 'info',
       icon: 'pi pi-receipt',
-      color: '#2563eb',
-      bgColor: '#eff6ff',
+      color: '#2547eb',
+      bgColor: '#eff4ff',
       path: '/bills',
     },
     {
@@ -26,8 +25,8 @@ export default function Dashboard() {
       badge: 'Parties Master',
       badgeSeverity: 'success',
       icon: 'pi pi-users',
-      color: '#0d9488',
-      bgColor: '#f0fdfa',
+      color: '#059669',
+      bgColor: '#ecfdf5',
       path: '/customers',
     },
     {
@@ -37,8 +36,8 @@ export default function Dashboard() {
       badge: 'Materials',
       badgeSeverity: 'warning',
       icon: 'pi pi-th-large',
-      color: '#16a34a',
-      bgColor: '#f0fdf4',
+      color: '#0284c7',
+      bgColor: '#f0f9ff',
       path: '/products',
     },
     {
@@ -163,13 +162,13 @@ export default function Dashboard() {
               icon="pi pi-plus"
               onClick={() => navigate('/bills')}
               style={{
-                background: 'linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%)',
+                background: 'linear-gradient(135deg, #2547eb 0%, #1d4ed8 100%)',
                 border: 'none',
                 borderRadius: '10px',
                 padding: '10px 20px',
                 fontWeight: 600,
                 fontSize: '0.9rem',
-                boxShadow: '0 4px 14px rgba(37, 99, 235, 0.4)',
+                boxShadow: '0 4px 14px rgba(37, 71, 235, 0.35)',
               }}
             />
             <Button
@@ -235,7 +234,7 @@ export default function Dashboard() {
               </div>
 
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                <div style={{ fontSize: '1.85rem', fontWeight: 800, color: '#0f172a', letterSpacing: '-0.02em' }}>
+                <div className="tabular-nums" style={{ fontSize: '1.85rem', fontWeight: 800, color: '#0f172a', letterSpacing: '-0.02em' }}>
                   {item.value}
                 </div>
                 <div

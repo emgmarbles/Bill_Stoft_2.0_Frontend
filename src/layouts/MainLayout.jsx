@@ -19,6 +19,7 @@ import {
   useTheme,
   SwipeableDrawer,
   Chip,
+  Tooltip,
 } from '@mui/material';
 import {
   Dashboard as DashboardIcon,
@@ -32,7 +33,6 @@ import {
   Mail as MailIcon,
   Backup as BackupIcon,
   Settings as SettingsIcon,
-  Menu as MenuIcon,
   MoreHoriz as MoreIcon,
   Close as CloseIcon,
   Logout as LogoutIcon,
@@ -42,6 +42,7 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 
 const DRAWER_WIDTH = 270;
+const COLLAPSED_DRAWER_WIDTH = 72;
 
 export const navGroups = [
   {
@@ -102,6 +103,9 @@ export default function MainLayout({ children }) {
   const { logout, user } = useAuth();
 
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+
+  const currentDrawerWidth = sidebarCollapsed ? COLLAPSED_DRAWER_WIDTH : DRAWER_WIDTH;
 
   const handleNavClick = (path) => {
     navigate(path);
@@ -131,24 +135,48 @@ export default function MainLayout({ children }) {
         }}
       >
         <Toolbar sx={{ justifyContent: 'space-between', px: { xs: 2, md: 3 } }}>
-          {/* Brand Logo & Name */}
+          {/* Brand Logo & Name with Collapse Sidebar Trigger */}
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+            <Tooltip title={isMobile ? "Menu" : (sidebarCollapsed ? "Expand Sidebar" : "Collapse Sidebar")} arrow>
+              <IconButton
+                onClick={() => {
+                  if (isMobile) {
+                    setMobileMenuOpen(true);
+                  } else {
+                    setSidebarCollapsed(!sidebarCollapsed);
+                  }
+                }}
+                sx={{
+                  p: 0,
+                  borderRadius: '8px',
+                  transition: 'transform 0.15s ease-in-out',
+                  '&:hover': { transform: 'scale(1.05)' },
+                }}
+              >
+                <Box
+                  sx={{
+                    width: 36,
+                    height: 36,
+                    borderRadius: '8px',
+                    bgcolor: '#2547eb',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    color: '#ffffff',
+                    boxShadow: '0 2px 8px rgba(37,71,235,0.4)',
+                    cursor: 'pointer',
+                  }}
+                >
+                  <InventoryIcon sx={{ fontSize: 20 }} />
+                </Box>
+              </IconButton>
+            </Tooltip>
             <Box
-              sx={{
-                width: 36,
-                height: 36,
-                borderRadius: '8px',
-                bgcolor: '#2563eb',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                color: '#ffffff',
-                boxShadow: '0 2px 8px rgba(37,99,235,0.4)',
+              onClick={() => {
+                if (!isMobile) setSidebarCollapsed(!sidebarCollapsed);
               }}
+              sx={{ cursor: isMobile ? 'default' : 'pointer', userSelect: 'none' }}
             >
-              <InventoryIcon sx={{ fontSize: 20 }} />
-            </Box>
-            <Box>
               <Typography
                 variant="subtitle1"
                 component="div"
@@ -251,72 +279,83 @@ export default function MainLayout({ children }) {
         <Drawer
           variant="permanent"
           sx={{
-            width: DRAWER_WIDTH,
+            width: currentDrawerWidth,
             flexShrink: 0,
+            transition: 'width 0.2s ease-in-out',
             [`& .MuiDrawer-paper`]: {
-              width: DRAWER_WIDTH,
+              width: currentDrawerWidth,
               boxSizing: 'border-box',
               bgcolor: '#ffffff',
               borderRight: '1px solid #e2e8f0',
+              transition: 'width 0.2s ease-in-out',
+              overflowX: 'hidden',
             },
           }}
         >
           <Toolbar />
-          <Box sx={{ overflowY: 'auto', px: 2, py: 2.5 }}>
+          <Box sx={{ overflowY: 'auto', px: sidebarCollapsed ? 1 : 2, py: 2.5, transition: 'padding 0.2s' }}>
             {navGroups.map((group, groupIdx) => (
-              <Box key={group.group} sx={{ mb: groupIdx === navGroups.length - 1 ? 0 : 2.5 }}>
-                <Typography
-                  sx={{
-                    px: 1.5,
-                    mb: 0.75,
-                    fontSize: '0.68rem',
-                    fontWeight: 700,
-                    color: '#94a3b8',
-                    letterSpacing: '0.08em',
-                  }}
-                >
-                  {group.group}
-                </Typography>
+              <Box key={group.group} sx={{ mb: groupIdx === navGroups.length - 1 ? 0 : (sidebarCollapsed ? 1.5 : 2.5) }}>
+                {!sidebarCollapsed ? (
+                  <Typography
+                    sx={{
+                      px: 1.5,
+                      mb: 0.75,
+                      fontSize: '0.68rem',
+                      fontWeight: 700,
+                      color: '#94a3b8',
+                      letterSpacing: '0.08em',
+                      whiteSpace: 'nowrap',
+                    }}
+                  >
+                    {group.group}
+                  </Typography>
+                ) : (
+                  groupIdx > 0 && <Divider sx={{ my: 1, borderColor: '#f1f5f9' }} />
+                )}
                 <List dense disablePadding>
                   {group.items.map((item) => {
                     const selected =
                       item.path === '/'
                         ? location.pathname === '/'
                         : location.pathname.startsWith(item.path);
-                    return (
-                      <ListItem key={item.text} disablePadding sx={{ mb: 0.4 }}>
-                        <ListItemButton
-                          selected={selected}
-                          onClick={() => handleNavClick(item.path)}
+
+                    const buttonContent = (
+                      <ListItemButton
+                        selected={selected}
+                        onClick={() => handleNavClick(item.path)}
+                        sx={{
+                          borderRadius: '8px',
+                          py: 0.9,
+                          px: sidebarCollapsed ? 1 : 1.5,
+                          justifyContent: sidebarCollapsed ? 'center' : 'initial',
+                          transition: 'all 0.15s ease-in-out',
+                          '&.Mui-selected': {
+                            background: 'linear-gradient(135deg, #2547eb 0%, #1d4ed8 100%)',
+                            color: '#ffffff',
+                            boxShadow: '0 4px 12px rgba(37,71,235,0.25)',
+                            '& .MuiListItemIcon-root': { color: '#ffffff' },
+                            '&:hover': {
+                              background: 'linear-gradient(135deg, #1d4ed8 0%, #1e40af 100%)',
+                            },
+                          },
+                          '&:not(.Mui-selected):hover': {
+                            bgcolor: '#f1f5f9',
+                            color: '#0f172a',
+                          },
+                        }}
+                      >
+                        <ListItemIcon
                           sx={{
-                            borderRadius: '8px',
-                            py: 0.9,
-                            px: 1.5,
-                            transition: 'all 0.15s ease-in-out',
-                            '&.Mui-selected': {
-                              background: 'linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%)',
-                              color: '#ffffff',
-                              boxShadow: '0 4px 10px rgba(37,99,235,0.25)',
-                              '& .MuiListItemIcon-root': { color: '#ffffff' },
-                              '&:hover': {
-                                background: 'linear-gradient(135deg, #1d4ed8 0%, #1e40af 100%)',
-                              },
-                            },
-                            '&:not(.Mui-selected):hover': {
-                              bgcolor: '#f1f5f9',
-                              color: '#0f172a',
-                            },
+                            minWidth: sidebarCollapsed ? 'auto' : 32,
+                            justifyContent: 'center',
+                            color: selected ? '#ffffff' : '#64748b',
+                            '& svg': { fontSize: 20 },
                           }}
                         >
-                          <ListItemIcon
-                            sx={{
-                              minWidth: 32,
-                              color: selected ? '#ffffff' : '#64748b',
-                              '& svg': { fontSize: 19 },
-                            }}
-                          >
-                            {item.icon}
-                          </ListItemIcon>
+                          {item.icon}
+                        </ListItemIcon>
+                        {!sidebarCollapsed && (
                           <ListItemText
                             primary={
                               <Typography
@@ -324,13 +363,26 @@ export default function MainLayout({ children }) {
                                   fontSize: '0.84rem',
                                   fontWeight: selected ? 700 : 500,
                                   color: selected ? '#ffffff' : '#334155',
+                                  whiteSpace: 'nowrap',
                                 }}
                               >
                                 {item.text}
                               </Typography>
                             }
                           />
-                        </ListItemButton>
+                        )}
+                      </ListItemButton>
+                    );
+
+                    return (
+                      <ListItem key={item.text} disablePadding sx={{ mb: 0.4 }}>
+                        {sidebarCollapsed ? (
+                          <Tooltip title={item.text} placement="right" arrow>
+                            {buttonContent}
+                          </Tooltip>
+                        ) : (
+                          buttonContent
+                        )}
                       </ListItem>
                     );
                   })}
@@ -347,7 +399,8 @@ export default function MainLayout({ children }) {
         sx={{
           flexGrow: 1,
           p: { xs: 2, sm: 3, md: 4 },
-          width: { md: `calc(100% - ${DRAWER_WIDTH}px)` },
+          width: { md: `calc(100% - ${currentDrawerWidth}px)` },
+          transition: 'width 0.2s ease-in-out',
           mt: '64px',
           mb: isMobile ? '68px' : 0,
           overflowX: 'hidden',
@@ -382,7 +435,7 @@ export default function MainLayout({ children }) {
             sx={{
               height: 60,
               '& .Mui-selected': {
-                color: '#2563eb',
+                color: '#2547eb',
                 '& .MuiBottomNavigationAction-label': { fontWeight: 700 },
               },
             }}
@@ -469,15 +522,15 @@ export default function MainLayout({ children }) {
                     minHeight: 86,
                     p: 1.5,
                     border: '1.5px solid',
-                    borderColor: selected ? '#2563eb' : '#e2e8f0',
+                    borderColor: selected ? '#2547eb' : '#e2e8f0',
                     borderRadius: 3,
-                    bgcolor: selected ? '#eff6ff' : '#ffffff',
+                    bgcolor: selected ? '#eff4ff' : '#ffffff',
                     cursor: 'pointer',
                     transition: 'all 0.15s ease-in-out',
-                    boxShadow: selected ? '0 4px 10px rgba(37,99,235,0.15)' : 'none',
+                    boxShadow: selected ? '0 4px 12px rgba(37,71,235,0.15)' : 'none',
                     '&:hover': {
-                      borderColor: '#2563eb',
-                      bgcolor: selected ? '#eff6ff' : '#f8fafc',
+                      borderColor: '#2547eb',
+                      bgcolor: selected ? '#eff4ff' : '#f8fafc',
                       transform: 'translateY(-2px)',
                     },
                     '&:active': {
@@ -487,7 +540,7 @@ export default function MainLayout({ children }) {
                 >
                   <Box
                     sx={{
-                      color: selected ? '#2563eb' : '#334155',
+                      color: selected ? '#2547eb' : '#334155',
                       mb: 0.75,
                       display: 'flex',
                       alignItems: 'center',
@@ -502,7 +555,7 @@ export default function MainLayout({ children }) {
                     sx={{
                       fontSize: '0.72rem',
                       fontWeight: selected ? 700 : 600,
-                      color: selected ? '#2563eb' : '#1e293b',
+                      color: selected ? '#2547eb' : '#1e293b',
                       lineHeight: 1.2,
                       display: '-webkit-box',
                       WebkitLineClamp: 2,
