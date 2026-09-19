@@ -155,10 +155,10 @@ export default function GSTInvoiceDetailDialog({ visible, invoice, onHide, onEdi
                       {index + 1}
                     </td>
                     <td style={{ padding: '10px 12px', fontWeight: 600 }}>
-                      {item.product?.name || item.product_name || `Product #${item.product_id || item.product}`}
+                      {item.product_name || item.product?.name || `Product #${item.product_id || item.product}`}
                     </td>
                     <td style={{ padding: '10px 12px', color: 'var(--text-muted)' }} className="tabular-nums">
-                      {item.product?.hsn_code || '-'}
+                      {item.product_hsn || item.product?.hsn_code || '-'}
                     </td>
                     <td style={{ padding: '10px 12px', textAlign: 'right' }} className="tabular-nums">
                       ₹{formatINR(item.price)}

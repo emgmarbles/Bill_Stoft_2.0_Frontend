@@ -86,6 +86,14 @@ export default function GSTInvoiceFormDialog({
   useEffect(() => {
     if (!visible) return;
 
+    const extractList = (res) => {
+      if (Array.isArray(res)) return res;
+      if (Array.isArray(res?.results)) return res.results;
+      if (Array.isArray(res?.data)) return res.data;
+      if (Array.isArray(res?.data?.results)) return res.data.results;
+      return [];
+    };
+
     const loadData = async () => {
       setErrorMsg('');
       try {
@@ -93,8 +101,8 @@ export default function GSTInvoiceFormDialog({
           isSale ? gstService.getCustomers() : gstService.getSuppliers(),
           gstService.getProducts(),
         ]);
-        setPartiesList(partiesRes || []);
-        setProductsList(productsRes || []);
+        setPartiesList(extractList(partiesRes));
+        setProductsList(extractList(productsRes));
 
         if (!isEdit) {
           // Fetch next auto invoice number for new invoice
@@ -193,7 +201,7 @@ export default function GSTInvoiceFormDialog({
   const handlePartyChange = (e) => {
     const partyId = e.value;
     setSelectedPartyId(partyId);
-    const selected = partiesList.find((p) => p.id === partyId);
+    const selected = Array.isArray(partiesList) ? partiesList.find((p) => p.id === partyId) : null;
     if (selected) {
       setPartyName(selected.name || '');
       setPartyAddress(selected.address || '');
@@ -204,7 +212,7 @@ export default function GSTInvoiceFormDialog({
   // Line item handlers
   const handleProductChange = (index, productId) => {
     const newItems = [...items];
-    const prod = productsList.find((p) => p.id === productId);
+    const prod = Array.isArray(productsList) ? productsList.find((p) => p.id === productId) : null;
     newItems[index].product_id = productId;
     newItems[index].product_name = prod ? prod.name : '';
     if (prod && prod.gst_rate) {
@@ -428,7 +436,7 @@ export default function GSTInvoiceFormDialog({
             </label>
             <Dropdown
               value={selectedPartyId}
-              options={partiesList}
+              options={Array.isArray(partiesList) ? partiesList : []}
               optionLabel="name"
               optionValue="id"
               onChange={handlePartyChange}
@@ -569,7 +577,7 @@ export default function GSTInvoiceFormDialog({
                     <td style={{ padding: '8px' }}>
                       <Dropdown
                         value={item.product_id}
-                        options={productsList}
+                        options={Array.isArray(productsList) ? productsList : []}
                         optionLabel="name"
                         optionValue="id"
                         onChange={(e) => handleProductChange(idx, e.value)}

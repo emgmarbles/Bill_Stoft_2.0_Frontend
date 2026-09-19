@@ -83,13 +83,23 @@ export default function GSTInvoiceList({ type = 'sale' }) {
     setFormDialogVisible(true);
   };
 
-  const handleOpenEdit = (inv) => {
-    setSelectedInvoice(inv);
+  const handleOpenEdit = async (inv) => {
+    try {
+      const fullInv = await gstService.getInvoice(inv.id);
+      setSelectedInvoice(fullInv || inv);
+    } catch {
+      setSelectedInvoice(inv);
+    }
     setFormDialogVisible(true);
   };
 
-  const handleOpenDetail = (inv) => {
-    setSelectedInvoice(inv);
+  const handleOpenDetail = async (inv) => {
+    try {
+      const fullInv = await gstService.getInvoice(inv.id);
+      setSelectedInvoice(fullInv || inv);
+    } catch {
+      setSelectedInvoice(inv);
+    }
     setDetailDialogVisible(true);
   };
 
@@ -412,7 +422,11 @@ export default function GSTInvoiceList({ type = 'sale' }) {
             header="Items"
             body={(row) => (
               <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>
-                {row.items ? `${row.items.length} item(s)` : '-'}
+                {row.items_count !== undefined && row.items_count !== null
+                  ? `${row.items_count} item(s)`
+                  : Array.isArray(row.items)
+                  ? `${row.items.length} item(s)`
+                  : '-'}
               </span>
             )}
             style={{ width: '100px' }}
