@@ -237,6 +237,78 @@ a {
   outline: none !important;
 }
 
+/* Input with Left or Right Icons */
+.p-input-icon-left,
+.p-input-icon-right,
+.p-icon-field-left,
+.p-icon-field-right {
+  position: relative !important;
+  display: inline-block !important;
+  vertical-align: middle !important;
+}
+
+.p-input-icon-left > i,
+.p-input-icon-left > i:first-of-type,
+.p-input-icon-left > svg,
+.p-input-icon-left > svg:first-of-type,
+.p-icon-field-left > i,
+.p-icon-field-left > i:first-of-type,
+.p-icon-field-left > svg,
+.p-icon-field-left > svg:first-of-type,
+.p-icon-field-left > .p-input-icon {
+  position: absolute !important;
+  top: 50% !important;
+  left: 0.75rem !important;
+  margin-top: 0 !important;
+  transform: translateY(-50%) !important;
+  color: #71717a !important;
+  z-index: 2 !important;
+  pointer-events: none !important;
+  font-size: 0.95rem !important;
+  line-height: 1 !important;
+  height: 1rem !important;
+  width: 1rem !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+}
+
+.p-input-icon-left > .p-inputtext,
+.p-icon-field-left > .p-inputtext {
+  padding-left: 2.25rem !important;
+}
+
+.p-input-icon-right > i,
+.p-input-icon-right > i:first-of-type,
+.p-input-icon-right > svg,
+.p-input-icon-right > svg:first-of-type,
+.p-icon-field-right > i,
+.p-icon-field-right > i:first-of-type,
+.p-icon-field-right > svg,
+.p-icon-field-right > svg:first-of-type,
+.p-icon-field-right > .p-input-icon {
+  position: absolute !important;
+  top: 50% !important;
+  right: 0.75rem !important;
+  margin-top: 0 !important;
+  transform: translateY(-50%) !important;
+  color: #71717a !important;
+  z-index: 2 !important;
+  pointer-events: none !important;
+  font-size: 0.95rem !important;
+  line-height: 1 !important;
+  height: 1rem !important;
+  width: 1rem !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+}
+
+.p-input-icon-right > .p-inputtext,
+.p-icon-field-right > .p-inputtext {
+  padding-right: 2.25rem !important;
+}
+
 /* Dropdown */
 .p-dropdown {
   border: 1px solid #e4e4e7 !important;
@@ -554,3 +626,119 @@ a {
   background: #ffffff !important;
   padding: 16px !important;
 }
+
+/* GST Form & Detail Dialogs Responsive Layout */
+.gst-invoice-form-dialog,
+.gst-invoice-detail-dialog {
+  max-width: 96vw !important;
+}
+
+.gst-invoice-grid-4 {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 14px;
+}
+
+.gst-party-fields-grid {
+  display: grid;
+  grid-template-columns: 1fr 2fr;
+  gap: 14px;
+}
+
+.gst-transport-fields-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 12px;
+}
+
+.gst-invoice-bottom-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  align-items: stretch;
+}
+
+.gst-invoice-bottom-grid > div {
+  min-width: 0; /* Prevents overflow into neighboring grid track */
+}
+
+.gst-payment-fields-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+.gst-payment-fields-grid > div {
+  min-width: 0;
+}
+
+/* Tablet & Mid-size screens */
+@media screen and (max-width: 1024px) {
+  .gst-invoice-grid-4 {
+    grid-template-columns: repeat(2, 1fr) !important;
+  }
+  .gst-transport-fields-grid {
+    grid-template-columns: repeat(2, 1fr) !important;
+  }
+}
+
+@media screen and (max-width: 900px) {
+  .gst-invoice-bottom-grid {
+    grid-template-columns: 1fr !important;
+    gap: 14px !important;
+  }
+}
+
+/* Mobile & Small screens */
+@media screen and (max-width: 768px) {
+  .gst-invoice-form-dialog,
+  .gst-invoice-detail-dialog {
+    width: 98vw !important;
+    margin: 4px !important;
+  }
+  .gst-invoice-form-dialog .p-dialog-header,
+  .gst-invoice-detail-dialog .p-dialog-header {
+    padding: 12px 14px !important;
+  }
+  .gst-invoice-form-dialog .p-dialog-content,
+  .gst-invoice-detail-dialog .p-dialog-content {
+    padding: 12px 14px !important;
+  }
+  .gst-invoice-form-dialog .p-dialog-footer,
+  .gst-invoice-detail-dialog .p-dialog-footer {
+    padding: 10px 14px !important;
+  }
+  .gst-party-fields-grid {
+    grid-template-columns: 1fr !important;
+    gap: 12px !important;
+  }
+  .gst-search-bar-wrap {
+    width: 100% !important;
+    min-width: 0 !important;
+  }
+  .gst-search-bar-wrap .p-input-icon-left {
+    max-width: 100% !important;
+  }
+  .gst-filter-select-wrap {
+    width: 100% !important;
+  }
+  .gst-filter-select-wrap .p-dropdown {
+    width: 100% !important;
+  }
+}
+
+@media screen and (max-width: 540px) {
+  .gst-invoice-grid-4 {
+    grid-template-columns: 1fr !important;
+    gap: 10px !important;
+  }
+  .gst-transport-fields-grid {
+    grid-template-columns: 1fr !important;
+    gap: 10px !important;
+  }
+  .gst-payment-fields-grid {
+    grid-template-columns: 1fr !important;
+    gap: 10px !important;
+  }
+}
+

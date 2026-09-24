@@ -28,14 +28,22 @@ export default function GSTInvoiceDetailDialog({ visible, invoice, onHide, onEdi
   };
 
   const footerContent = (
-    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%' }}>
-      <div>
+    <div
+      style={{
+        display: 'flex',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        flexWrap: 'wrap',
+        gap: '8px',
+        width: '100%',
+      }}
+    >
+      <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
         <Button
           label="Print Tax Invoice"
           icon="pi pi-print"
           className="p-button-outlined"
           onClick={handlePrint}
-          style={{ marginRight: '8px' }}
         />
         {onEdit && (
           <Button
@@ -56,7 +64,7 @@ export default function GSTInvoiceDetailDialog({ visible, invoice, onHide, onEdi
   return (
     <Dialog
       header={
-        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '10px' }}>
           <i className="pi pi-file" style={{ fontSize: '1.25rem', color: 'var(--primary-color)' }} />
           <div>
             <span style={{ fontWeight: 700, fontSize: '1.1rem' }}>
@@ -69,7 +77,7 @@ export default function GSTInvoiceDetailDialog({ visible, invoice, onHide, onEdi
           <Tag
             value={(invoice.payment_status || 'PENDING').toUpperCase()}
             severity={getStatusSeverity(invoice.payment_status)}
-            style={{ marginLeft: 'auto', marginRight: '24px' }}
+            style={{ marginLeft: 'auto' }}
           />
         </div>
       }
@@ -135,8 +143,8 @@ export default function GSTInvoiceDetailDialog({ visible, invoice, onHide, onEdi
         </div>
 
         {/* Items Table */}
-        <div style={{ border: '1px solid #e2e8f0', borderRadius: '8px', overflow: 'hidden', marginBottom: '20px' }}>
-          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.875rem' }}>
+        <div style={{ border: '1px solid #e2e8f0', borderRadius: '8px', overflowX: 'auto', marginBottom: '20px' }}>
+          <table style={{ width: '100%', minWidth: '600px', borderCollapse: 'collapse', fontSize: '0.875rem' }}>
             <thead>
               <tr style={{ background: '#f1f5f9', borderBottom: '1px solid #e2e8f0', textAlign: 'left' }}>
                 <th style={{ padding: '10px 12px', width: '50px' }}>#</th>
@@ -231,7 +239,7 @@ export default function GSTInvoiceDetailDialog({ visible, invoice, onHide, onEdi
 
         {/* Calculations Breakdown */}
         <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '12px' }}>
-          <div style={{ width: '360px', background: '#f8fafc', padding: '16px', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
+          <div style={{ width: '360px', maxWidth: '100%', background: '#f8fafc', padding: '16px', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px', fontSize: '0.875rem' }}>
               <span style={{ color: 'var(--text-muted)' }}>Taxable Subtotal:</span>
               <span className="tabular-nums" style={{ fontWeight: 600 }}>₹{formatINR(invoice.total_amount)}</span>

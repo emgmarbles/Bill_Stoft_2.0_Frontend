@@ -344,8 +344,17 @@ export default function GSTInvoiceFormDialog({
   // Edit modals: [Update/Save] [Cancel]  (me-auto) ······ [Delete] (right)
   // Add modals: [Save] [Cancel] (me-auto)
   const dialogFooter = (
-    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%' }}>
-      <div style={{ display: 'flex', gap: '8px' }}>
+    <div
+      style={{
+        display: 'flex',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        flexWrap: 'wrap',
+        gap: '10px',
+        width: '100%',
+      }}
+    >
+      <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
         <Button
           label={isEdit ? 'Update Invoice' : 'Save Invoice'}
           icon="pi pi-check"
@@ -403,7 +412,7 @@ export default function GSTInvoiceFormDialog({
 
       <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
         {/* Section 1: Header & Party Details */}
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '14px' }}>
+        <div className="gst-invoice-grid-4">
           <div>
             <label style={{ display: 'block', marginBottom: '6px', fontSize: '0.85rem', fontWeight: 600 }}>
               Invoice Number
@@ -460,7 +469,7 @@ export default function GSTInvoiceFormDialog({
           </div>
         </div>
 
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 2fr', gap: '14px' }}>
+        <div className="gst-party-fields-grid">
           <div>
             <label style={{ display: 'block', marginBottom: '6px', fontSize: '0.85rem', fontWeight: 600 }}>
               Party / Billed Name *
@@ -493,14 +502,16 @@ export default function GSTInvoiceFormDialog({
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'space-between',
+            flexWrap: 'wrap',
+            gap: '12px',
             background: 'var(--primary-container)',
             padding: '10px 16px',
             borderRadius: '8px',
             border: '1px solid #dbeafe',
           }}
         >
-          <div style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '20px', flexWrap: 'wrap' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
               <span style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--primary-color)' }}>
                 GST Rate:
               </span>
@@ -508,7 +519,7 @@ export default function GSTInvoiceFormDialog({
                 value={gstRatePercent}
                 options={DEFAULT_GST_RATES}
                 onChange={(e) => setGstRatePercent(e.value)}
-                style={{ width: '220px' }}
+                style={{ width: '220px', maxWidth: '100%' }}
               />
             </div>
 
@@ -559,7 +570,7 @@ export default function GSTInvoiceFormDialog({
           </div>
 
           <div style={{ padding: '10px', overflowX: 'auto' }}>
-            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.875rem' }}>
+            <table style={{ width: '100%', minWidth: '650px', borderCollapse: 'collapse', fontSize: '0.875rem' }}>
               <thead>
                 <tr style={{ color: 'var(--text-muted)', textAlign: 'left', borderBottom: '1px solid #e2e8f0' }}>
                   <th style={{ padding: '8px', width: '40px' }}>#</th>
@@ -637,7 +648,7 @@ export default function GSTInvoiceFormDialog({
               </div>
             }
           >
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '12px', marginTop: '8px' }}>
+            <div className="gst-transport-fields-grid" style={{ marginTop: '8px' }}>
               <div>
                 <label style={{ display: 'block', marginBottom: '4px', fontSize: '0.8rem', fontWeight: 600 }}>
                   Truck / Vehicle Number
@@ -740,13 +751,13 @@ export default function GSTInvoiceFormDialog({
         </Accordion>
 
         {/* Section 4: Payment & Bottom Calculation Summary */}
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '16px' }}>
+        <div className="gst-invoice-bottom-grid">
           {/* Payment Details */}
           <div style={{ background: '#f8fafc', padding: '14px', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
             <div style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: '10px' }}>
               Payment & Settlement
             </div>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+            <div className="gst-payment-fields-grid">
               <div>
                 <label style={{ display: 'block', marginBottom: '4px', fontSize: '0.8rem', fontWeight: 600 }}>
                   Status

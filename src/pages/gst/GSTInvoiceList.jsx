@@ -365,7 +365,7 @@ export default function GSTInvoiceList({ type = 'sale' }) {
           marginBottom: '16px',
         }}
       >
-        <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flex: 1, minWidth: '280px' }}>
+        <div className="gst-search-bar-wrap" style={{ display: 'flex', alignItems: 'center', gap: '12px', flex: 1, minWidth: '280px' }}>
           <span className="p-input-icon-left" style={{ width: '100%', maxWidth: '380px' }}>
             <i className="pi pi-search" />
             <InputText
@@ -385,7 +385,7 @@ export default function GSTInvoiceList({ type = 'sale' }) {
           )}
         </div>
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+        <div className="gst-filter-select-wrap" style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
           <Dropdown
             value={paymentStatusFilter}
             options={PAYMENT_FILTER_OPTIONS}
