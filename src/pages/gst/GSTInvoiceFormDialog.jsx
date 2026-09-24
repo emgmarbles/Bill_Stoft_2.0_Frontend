@@ -38,8 +38,9 @@ export default function GSTInvoiceFormDialog({
   onSave,
   onDelete,
 }) {
-  const isSale = invoiceType === 'sale';
   const isEdit = Boolean(invoice && invoice.id);
+  const [currentType, setCurrentType] = useState(invoice?.invoice_type || (invoiceType === 'purchase' ? 'purchase' : 'sale'));
+  const isSale = currentType === 'sale';
 
   // Form State
   const [invoiceNo, setInvoiceNo] = useState('');
@@ -82,6 +83,26 @@ export default function GSTInvoiceFormDialog({
   const [submitting, setSubmitting] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
 
+  // Synchronize currentType when invoice or invoiceType prop changes
+  useEffect(() => {
+    if (visible) {
+      if (invoice && invoice.id) {
+        setCurrentType(invoice.invoice_type || 'sale');
+      } else {
+        setCurrentType(invoiceType === 'purchase' ? 'purchase' : 'sale');
+      }
+    }
+  }, [visible, invoice, invoiceType]);
+
+  const handleTypeChange = (newType) => {
+    if (newType === currentType || isEdit) return;
+    setCurrentType(newType);
+    setSelectedPartyId(null);
+    setPartyName('');
+    setPartyAddress('');
+    setPartyGstin('');
+  };
+
   // Fetch parties and products master
   useEffect(() => {
     if (!visible) return;
@@ -94,21 +115,24 @@ export default function GSTInvoiceFormDialog({
       return [];
     };
 
+    let isCancelled = false;
+
     const loadData = async () => {
       setErrorMsg('');
       try {
         const [partiesRes, productsRes] = await Promise.all([
-          isSale ? gstService.getCustomers() : gstService.getSuppliers(),
+          currentType === 'sale' ? gstService.getCustomers() : gstService.getSuppliers(),
           gstService.getProducts(),
         ]);
+        if (isCancelled) return;
         setPartiesList(extractList(partiesRes));
         setProductsList(extractList(productsRes));
 
         if (!isEdit) {
-          // Fetch next auto invoice number for new invoice
+          // Fetch next auto invoice number for currentType
           try {
-            const nextRes = await gstService.getNextInvoiceNo(invoiceType);
-            if (nextRes?.next_invoice_no) {
+            const nextRes = await gstService.getNextInvoiceNo(currentType);
+            if (!isCancelled && nextRes?.next_invoice_no) {
               setInvoiceNo(nextRes.next_invoice_no);
             }
           } catch (e) {
@@ -116,12 +140,18 @@ export default function GSTInvoiceFormDialog({
           }
         }
       } catch (err) {
-        console.error('Failed to load initial data', err);
+        if (!isCancelled) {
+          console.error('Failed to load initial data', err);
+        }
       }
     };
 
     loadData();
-  }, [visible, isSale, invoiceType, isEdit]);
+
+    return () => {
+      isCancelled = true;
+    };
+  }, [visible, currentType, isEdit]);
 
   // Populate form if editing
   useEffect(() => {
@@ -288,7 +318,7 @@ export default function GSTInvoiceFormDialog({
     setSubmitting(true);
     try {
       const payload = {
-        invoice_type: invoiceType,
+        invoice_type: currentType,
         invoice_date: invoiceDate ? invoiceDate.toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
         customer_id: isSale ? selectedPartyId : null,
         supplier_id: !isSale ? selectedPartyId : null,
@@ -411,6 +441,55 @@ export default function GSTInvoiceFormDialog({
       )}
 
       <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+        {/* Transaction Type Segmented Switcher */}
+        <div
+          style={{
+            background: isSale ? '#eff6ff' : '#fffbeb',
+            border: isSale ? '1px solid #bfdbfe' : '1px solid #fde68a',
+            padding: '12px 16px',
+            borderRadius: '8px',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            flexWrap: 'wrap',
+            gap: '12px',
+          }}
+        >
+          <div>
+            <div style={{ fontSize: '0.875rem', fontWeight: 700, color: 'var(--text-main)', display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <span>Invoice Type:</span>
+              <span style={{ color: isSale ? 'var(--primary-color)' : '#b45309', fontWeight: 800 }}>
+                {isSale ? 'SALE TAX INVOICE (OUTWARD)' : 'PURCHASE TAX INVOICE (INWARD)'}
+              </span>
+            </div>
+            <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '2px' }}>
+              {isSale
+                ? 'Outward billing to registered buyer or unregistered customer (Series S-xxxx)'
+                : 'Inward purchase from quarry supplier or vendor (Series P-xxxx)'}
+            </div>
+          </div>
+          {!isEdit && (
+            <div style={{ display: 'flex', gap: '8px' }}>
+              <Button
+                type="button"
+                label="Sale Bill"
+                icon="pi pi-arrow-up-right"
+                size="small"
+                className={isSale ? 'p-button-primary' : 'p-button-outlined p-button-secondary'}
+                onClick={() => handleTypeChange('sale')}
+              />
+              <Button
+                type="button"
+                label="Purchase Bill"
+                icon="pi pi-arrow-down-left"
+                size="small"
+                className={!isSale ? 'p-button-warning' : 'p-button-outlined p-button-secondary'}
+                onClick={() => handleTypeChange('purchase')}
+              />
+            </div>
+          )}
+        </div>
+
         {/* Section 1: Header & Party Details */}
         <div className="gst-invoice-grid-4">
           <div>

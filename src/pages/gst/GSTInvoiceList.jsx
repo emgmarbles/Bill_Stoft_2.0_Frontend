@@ -20,10 +20,35 @@ const PAYMENT_FILTER_OPTIONS = [
 ];
 
 export default function GSTInvoiceList({ type = 'sale' }) {
-  const isSale = type === 'sale';
-  const pageTitle = isSale ? 'GST Sell Bills & Tax Invoices' : 'Purchase GST Invoices';
-  const createButtonLabel = isSale ? 'Create Sale Tax Invoice' : 'Record Purchase Invoice';
-  const partyHeader = isSale ? 'Customer / Buyer' : 'Supplier / Quarry';
+  const [activeType, setActiveType] = useState(type || 'sale');
+
+  useEffect(() => {
+    if (type) {
+      setActiveType(type);
+    }
+  }, [type]);
+
+  const isSale = activeType === 'sale';
+  const isPurchase = activeType === 'purchase';
+  const isAll = activeType === 'all';
+
+  const pageTitle = isSale
+    ? 'GST Sell Bills & Tax Invoices'
+    : isPurchase
+    ? 'Purchase GST Invoices'
+    : 'All GST Tax Invoices (Sales & Purchases)';
+
+  const createButtonLabel = isPurchase
+    ? 'Record Purchase Invoice'
+    : isSale
+    ? 'Create Sale Tax Invoice'
+    : 'Create GST Invoice';
+
+  const partyHeader = isSale
+    ? 'Customer / Buyer'
+    : isPurchase
+    ? 'Supplier / Quarry'
+    : 'Party (Customer / Supplier)';
 
   // Table & Data State
   const [invoices, setInvoices] = useState([]);
@@ -46,14 +71,14 @@ export default function GSTInvoiceList({ type = 'sale' }) {
     setLoading(true);
     try {
       const params = {
-        invoice_type: type,
+        ...(activeType !== 'all' && { invoice_type: activeType }),
         ...(search.trim() && { search: search.trim() }),
         ...(paymentStatusFilter && { payment_status: paymentStatusFilter }),
       };
 
       const [invoicesData, summaryData] = await Promise.all([
         gstService.getInvoices(params),
-        gstService.getInvoiceSummary(type),
+        gstService.getInvoiceSummary(activeType !== 'all' ? activeType : undefined),
       ]);
 
       // DRF might return paginated { results: [...] } or direct array
@@ -71,7 +96,7 @@ export default function GSTInvoiceList({ type = 'sale' }) {
     } finally {
       setLoading(false);
     }
-  }, [type, search, paymentStatusFilter]);
+  }, [activeType, search, paymentStatusFilter]);
 
   useEffect(() => {
     fetchInvoices();
@@ -197,10 +222,18 @@ export default function GSTInvoiceList({ type = 'sale' }) {
 
   // Party Renderer
   const partyBodyTemplate = (rowData) => {
-    const name = rowData.party_name || (isSale ? rowData.customer?.name : rowData.supplier?.name) || 'Unassigned';
+    const isRowSale = rowData.invoice_type === 'sale';
+    const name = rowData.party_name || (isRowSale ? rowData.customer?.name : rowData.supplier?.name) || 'Unassigned';
     return (
       <div className="gst-party-cell" style={{ textAlign: 'right' }}>
-        <div style={{ fontWeight: 600, color: 'var(--text-main)' }}>{name}</div>
+        <div style={{ fontWeight: 600, color: 'var(--text-main)' }}>
+          {name}
+          {activeType === 'all' && (
+            <span style={{ fontSize: '0.7rem', color: isRowSale ? '#2563eb' : '#d97706', marginLeft: '6px', fontWeight: 500 }}>
+              ({isRowSale ? 'Buyer' : 'Supplier'})
+            </span>
+          )}
+        </div>
         {rowData.party_gstin && (
           <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }} className="tabular-nums">
             GSTIN: {rowData.party_gstin}
@@ -251,7 +284,7 @@ export default function GSTInvoiceList({ type = 'sale' }) {
           alignItems: 'center',
           flexWrap: 'wrap',
           gap: '16px',
-          marginBottom: '24px',
+          marginBottom: '20px',
         }}
       >
         <div>
@@ -260,15 +293,17 @@ export default function GSTInvoiceList({ type = 'sale' }) {
               {pageTitle}
             </h1>
             <Tag
-              value={isSale ? 'Outward Sales' : 'Inward Purchases'}
-              severity={isSale ? 'info' : 'warning'}
+              value={isSale ? 'Outward Sales' : isPurchase ? 'Inward Purchases' : 'Consolidated Ledger'}
+              severity={isSale ? 'info' : isPurchase ? 'warning' : 'success'}
               style={{ fontSize: '0.75rem' }}
             />
           </div>
           <p style={{ margin: '4px 0 0 0', color: 'var(--text-muted)', fontSize: '0.9rem' }}>
             {isSale
               ? 'GST compliance sales bills with automated tax calculations, HSN codes, and transport logistics.'
-              : 'Record incoming supplier GST bills with input tax credit (ITC) and purchase tracking.'}
+              : isPurchase
+              ? 'Record incoming supplier GST bills with input tax credit (ITC) and purchase tracking.'
+              : 'Complete unified sales and purchases register with integrated tax calculations.'}
           </p>
         </div>
 
@@ -286,6 +321,98 @@ export default function GSTInvoiceList({ type = 'sale' }) {
             className="p-button-primary"
             onClick={handleOpenCreate}
           />
+        </div>
+      </div>
+
+      {/* Type Toggle Tabs */}
+      <div
+        className="gst-type-tabs-container"
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: '8px',
+          marginBottom: '20px',
+          flexWrap: 'wrap',
+        }}
+      >
+        <div
+          style={{
+            display: 'inline-flex',
+            background: '#f4f4f5',
+            padding: '3px',
+            borderRadius: '8px',
+            border: '1px solid #e4e4e7',
+            gap: '3px',
+          }}
+        >
+          <button
+            type="button"
+            onClick={() => setActiveType('sale')}
+            style={{
+              padding: '6px 14px',
+              fontSize: '0.85rem',
+              fontWeight: 600,
+              borderRadius: '6px',
+              border: 'none',
+              cursor: 'pointer',
+              transition: 'all 0.15s ease',
+              background: activeType === 'sale' ? '#ffffff' : 'transparent',
+              color: activeType === 'sale' ? '#09090b' : '#71717a',
+              boxShadow: activeType === 'sale' ? '0 1px 3px rgba(0,0,0,0.08)' : 'none',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px',
+            }}
+          >
+            <i className="pi pi-arrow-up-right" style={{ fontSize: '0.75rem', color: activeType === 'sale' ? '#2563eb' : 'inherit' }} />
+            Sales Bills (Outward)
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setActiveType('purchase')}
+            style={{
+              padding: '6px 14px',
+              fontSize: '0.85rem',
+              fontWeight: 600,
+              borderRadius: '6px',
+              border: 'none',
+              cursor: 'pointer',
+              transition: 'all 0.15s ease',
+              background: activeType === 'purchase' ? '#ffffff' : 'transparent',
+              color: activeType === 'purchase' ? '#09090b' : '#71717a',
+              boxShadow: activeType === 'purchase' ? '0 1px 3px rgba(0,0,0,0.08)' : 'none',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px',
+            }}
+          >
+            <i className="pi pi-arrow-down-left" style={{ fontSize: '0.75rem', color: activeType === 'purchase' ? '#d97706' : 'inherit' }} />
+            Purchase Bills (Inward)
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setActiveType('all')}
+            style={{
+              padding: '6px 14px',
+              fontSize: '0.85rem',
+              fontWeight: 600,
+              borderRadius: '6px',
+              border: 'none',
+              cursor: 'pointer',
+              transition: 'all 0.15s ease',
+              background: activeType === 'all' ? '#ffffff' : 'transparent',
+              color: activeType === 'all' ? '#09090b' : '#71717a',
+              boxShadow: activeType === 'all' ? '0 1px 3px rgba(0,0,0,0.08)' : 'none',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px',
+            }}
+          >
+            <i className="pi pi-list" style={{ fontSize: '0.75rem' }} />
+            All Invoices
+          </button>
         </div>
       </div>
 
@@ -407,7 +534,7 @@ export default function GSTInvoiceList({ type = 'sale' }) {
           emptyMessage={
             <div style={{ padding: '36px', textAlign: 'center', color: 'var(--text-muted)' }}>
               <i className="pi pi-inbox" style={{ fontSize: '2rem', marginBottom: '10px', display: 'block', color: '#cbd5e1' }} />
-              No {isSale ? 'sales' : 'purchase'} invoices found matching current filters.
+              No {isSale ? 'sales' : isPurchase ? 'purchase' : ''} invoices found matching current filters.
             </div>
           }
           responsiveLayout="stack"
@@ -415,6 +542,21 @@ export default function GSTInvoiceList({ type = 'sale' }) {
           stripedRows
         >
           <Column field="invoice_no" header="Invoice No" body={invoiceNoBodyTemplate} sortable headerStyle={{ width: '180px' }} />
+          {isAll && (
+            <Column
+              field="invoice_type"
+              header="Type"
+              body={(row) => (
+                <Tag
+                  value={row.invoice_type === 'sale' ? 'SALE' : 'PURCHASE'}
+                  severity={row.invoice_type === 'sale' ? 'info' : 'warning'}
+                  style={{ fontSize: '0.7rem', fontWeight: 700 }}
+                />
+              )}
+              sortable
+              headerStyle={{ width: '110px' }}
+            />
+          )}
           <Column
             field="invoice_date"
             header="Date"
@@ -477,7 +619,7 @@ export default function GSTInvoiceList({ type = 'sale' }) {
       <GSTInvoiceFormDialog
         visible={formDialogVisible}
         invoice={selectedInvoice}
-        invoiceType={type}
+        invoiceType={selectedInvoice?.invoice_type || (activeType === 'all' ? 'sale' : activeType)}
         onHide={() => setFormDialogVisible(false)}
         onSave={fetchInvoices}
         onDelete={(inv) => {

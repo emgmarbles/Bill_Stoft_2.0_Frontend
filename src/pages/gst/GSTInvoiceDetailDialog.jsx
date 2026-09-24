@@ -65,12 +65,19 @@ export default function GSTInvoiceDetailDialog({ visible, invoice, onHide, onEdi
     <Dialog
       header={
         <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '10px' }}>
-          <i className="pi pi-file" style={{ fontSize: '1.25rem', color: 'var(--primary-color)' }} />
+          <i className="pi pi-file" style={{ fontSize: '1.25rem', color: isSale ? 'var(--primary-color)' : '#d97706' }} />
           <div>
-            <span style={{ fontWeight: 700, fontSize: '1.1rem' }}>
-              {isSale ? 'Tax Invoice' : 'Purchase Tax Invoice'} #{invoice.invoice_no}
-            </span>
-            <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginLeft: '12px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+              <span style={{ fontWeight: 700, fontSize: '1.1rem' }}>
+                {isSale ? 'Tax Invoice' : 'Purchase Tax Invoice'} #{invoice.invoice_no}
+              </span>
+              <Tag
+                value={isSale ? 'SALE (OUTWARD)' : 'PURCHASE (INWARD)'}
+                severity={isSale ? 'info' : 'warning'}
+                style={{ fontSize: '0.7rem' }}
+              />
+            </div>
+            <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>
               Date: {formatDate(invoice.invoice_date)}
             </span>
           </div>
