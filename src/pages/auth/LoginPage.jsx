@@ -80,12 +80,11 @@ export default function LoginPage() {
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
-        bgcolor: '#0f172a',
-        backgroundImage: 'radial-gradient(at 0% 0%, rgba(37, 71, 235, 0.15) 0px, transparent 50%), radial-gradient(at 100% 100%, rgba(37, 71, 235, 0.1) 0px, transparent 50%)',
+        bgcolor: '#fafafa',
         p: 2,
       }}
     >
-      <Box sx={{ width: '100%', maxWidth: 440 }}>
+      <Box sx={{ width: '100%', maxWidth: 420 }}>
         {/* Brand Header */}
         <Box sx={{ textAlign: 'center', mb: 3 }}>
           <Box
@@ -93,45 +92,56 @@ export default function LoginPage() {
               display: 'inline-flex',
               alignItems: 'center',
               justifyContent: 'center',
-              width: 52,
-              height: 52,
-              borderRadius: '12px',
-              bgcolor: '#2547eb',
-              color: '#ffffff',
-              boxShadow: '0 4px 14px rgba(37, 71, 235, 0.4)',
+              width: 44,
+              height: 44,
+              borderRadius: '8px',
+              bgcolor: '#18181b',
+              color: '#fafafa',
+              boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1)',
               mb: 1.5,
             }}
           >
-            <InventoryIcon sx={{ fontSize: 28 }} />
+            <InventoryIcon sx={{ fontSize: 24 }} />
           </Box>
-          <Typography variant="h5" sx={{ fontWeight: 800, color: '#ffffff', letterSpacing: '-0.02em' }}>
+          <Typography variant="h5" sx={{ fontWeight: 700, color: '#09090b', letterSpacing: '-0.02em' }}>
             ELBAT ERP
           </Typography>
-          <Typography variant="body2" sx={{ color: '#94a3b8', mt: 0.5 }}>
+          <Typography variant="body2" sx={{ color: '#71717a', mt: 0.5 }}>
             Stone & Marble Trading Stock Management
           </Typography>
         </Box>
 
         {/* Login Card */}
         <Card
-          elevation={4}
+          elevation={0}
           sx={{
-            borderRadius: 3,
-            border: '1px solid #1e293b',
+            borderRadius: 2,
+            border: '1px solid #e4e4e7',
             bgcolor: '#ffffff',
-            boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.3), 0 10px 10px -5px rgba(0, 0, 0, 0.2)',
+            boxShadow: '0 1px 3px 0 rgba(0, 0, 0, 0.05), 0 1px 2px 0 rgba(0, 0, 0, 0.03)',
           }}
         >
-          <CardContent sx={{ p: { xs: 3, sm: 4 } }}>
-            <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 2 }}>
-              <Typography variant="h6" sx={{ fontWeight: 700, color: '#0f172a' }}>
+          <CardContent sx={{ p: { xs: 3, sm: 3.5 } }}>
+            <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 2.5 }}>
+              <Typography variant="h6" sx={{ fontWeight: 600, color: '#09090b', letterSpacing: '-0.01em' }}>
                 Sign In
               </Typography>
-              <Chip label="Enterprise 2.0" size="small" sx={{ height: 22, fontSize: '0.7rem', fontWeight: 600, bgcolor: '#eff4ff', color: '#2547eb' }} />
+              <Chip
+                label="Enterprise 2.0"
+                size="small"
+                sx={{
+                  height: 22,
+                  fontSize: '0.7rem',
+                  fontWeight: 500,
+                  bgcolor: '#f4f4f5',
+                  color: '#18181b',
+                  border: '1px solid #e4e4e7',
+                }}
+              />
             </Box>
 
             {errorMessage && (
-              <Alert severity="error" sx={{ mb: 2.5, borderRadius: 2, fontSize: '0.85rem' }}>
+              <Alert severity="error" sx={{ mb: 2.5, borderRadius: 1.5, fontSize: '0.85rem' }}>
                 {errorMessage}
               </Alert>
             )}
@@ -139,7 +149,7 @@ export default function LoginPage() {
             <form onSubmit={handleSubmit}>
               <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
                 <div>
-                  <Typography variant="caption" sx={{ display: 'block', mb: 0.75, fontWeight: 600, color: '#334155' }}>
+                  <Typography variant="caption" sx={{ display: 'block', mb: 0.75, fontWeight: 500, color: '#09090b' }}>
                     Email Address
                   </Typography>
                   <TextField
@@ -154,8 +164,10 @@ export default function LoginPage() {
                     size="small"
                     sx={{
                       '& .MuiOutlinedInput-root': {
-                        borderRadius: '8px',
-                        '&.Mui-focused fieldset': { borderColor: '#2547eb' },
+                        borderRadius: '6px',
+                        '& fieldset': { borderColor: '#e4e4e7' },
+                        '&:hover fieldset': { borderColor: '#a1a1aa' },
+                        '&.Mui-focused fieldset': { borderColor: '#18181b', borderWidth: '1px' },
                       },
                     }}
                   />
@@ -163,16 +175,16 @@ export default function LoginPage() {
 
                 <div>
                   <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 0.75 }}>
-                    <Typography variant="caption" sx={{ fontWeight: 600, color: '#334155' }}>
+                    <Typography variant="caption" sx={{ fontWeight: 500, color: '#09090b' }}>
                       Password
                     </Typography>
                     <Link
                       to="/forgot-password"
                       style={{
                         fontSize: '0.75rem',
-                        fontWeight: 600,
-                        color: '#2547eb',
-                        textDecoration: 'none',
+                        fontWeight: 500,
+                        color: '#71717a',
+                        textDecoration: 'underline',
                       }}
                     >
                       Forgot password?
@@ -189,8 +201,10 @@ export default function LoginPage() {
                     size="small"
                     sx={{
                       '& .MuiOutlinedInput-root': {
-                        borderRadius: '8px',
-                        '&.Mui-focused fieldset': { borderColor: '#2547eb' },
+                        borderRadius: '6px',
+                        '& fieldset': { borderColor: '#e4e4e7' },
+                        '&:hover fieldset': { borderColor: '#a1a1aa' },
+                        '&.Mui-focused fieldset': { borderColor: '#18181b', borderWidth: '1px' },
                       },
                     }}
                     InputProps={{
@@ -200,7 +214,7 @@ export default function LoginPage() {
                             size="small"
                             onClick={() => setShowPassword(!showPassword)}
                             edge="end"
-                            sx={{ color: '#94a3b8' }}
+                            sx={{ color: '#71717a' }}
                           >
                             {showPassword ? <VisibilityOffIcon fontSize="small" /> : <VisibilityIcon fontSize="small" />}
                           </IconButton>
@@ -216,10 +230,10 @@ export default function LoginPage() {
                       checked={rememberMe}
                       onChange={(e) => setRememberMe(e.target.checked)}
                       size="small"
-                      sx={{ color: '#94a3b8', '&.Mui-checked': { color: '#2547eb' } }}
+                      sx={{ color: '#a1a1aa', '&.Mui-checked': { color: '#18181b' } }}
                     />
                   }
-                  label={<Typography variant="caption" sx={{ color: '#475569', fontWeight: 500 }}>Remember this device for 30 days</Typography>}
+                  label={<Typography variant="caption" sx={{ color: '#71717a', fontWeight: 400 }}>Remember this device for 30 days</Typography>}
                 />
 
                 <Button
@@ -227,19 +241,20 @@ export default function LoginPage() {
                   fullWidth
                   variant="contained"
                   disabled={submitting}
-                  startIcon={submitting ? <CircularProgress size={18} color="inherit" /> : <LockIcon />}
+                  startIcon={submitting ? <CircularProgress size={16} color="inherit" /> : <LockIcon sx={{ fontSize: 16 }} />}
                   sx={{
                     mt: 1,
-                    py: 1.2,
-                    borderRadius: '8px',
-                    fontWeight: 700,
+                    py: 1,
+                    borderRadius: '6px',
+                    fontWeight: 500,
                     textTransform: 'none',
-                    fontSize: '0.95rem',
-                    bgcolor: '#2547eb',
-                    boxShadow: '0 4px 12px rgba(37, 71, 235, 0.3)',
+                    fontSize: '0.875rem',
+                    bgcolor: '#18181b',
+                    color: '#fafafa',
+                    boxShadow: 'none',
                     '&:hover': {
-                      bgcolor: '#1d4ed8',
-                      boxShadow: '0 6px 16px rgba(37, 71, 235, 0.4)',
+                      bgcolor: '#27272a',
+                      boxShadow: 'none',
                     },
                   }}
                 >
@@ -252,14 +267,14 @@ export default function LoginPage() {
             <Box
               sx={{
                 mt: 3,
-                pt: 2.5,
-                borderTop: '1px solid #f1f5f9',
+                pt: 2,
+                borderTop: '1px solid #e4e4e7',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'space-between',
               }}
             >
-              <Typography variant="caption" sx={{ color: '#94a3b8' }}>
+              <Typography variant="caption" sx={{ color: '#71717a' }}>
                 Testing access?
               </Typography>
               <Button
@@ -268,9 +283,9 @@ export default function LoginPage() {
                 sx={{
                   textTransform: 'none',
                   fontSize: '0.75rem',
-                  fontWeight: 600,
-                  color: '#64748b',
-                  '&:hover': { bgcolor: '#f8fafc', color: '#0f172a' },
+                  fontWeight: 500,
+                  color: '#71717a',
+                  '&:hover': { bgcolor: '#f4f4f5', color: '#09090b' },
                 }}
               >
                 Auto-fill Admin Demo
@@ -281,7 +296,7 @@ export default function LoginPage() {
 
         {/* Footer info */}
         <Box sx={{ textAlign: 'center', mt: 3 }}>
-          <Typography variant="caption" sx={{ color: '#64748b', fontSize: '0.75rem' }}>
+          <Typography variant="caption" sx={{ color: '#71717a', fontSize: '0.75rem' }}>
             ELBAT Stones &copy; {new Date().getFullYear()} · Strictly authorized access only
           </Typography>
         </Box>

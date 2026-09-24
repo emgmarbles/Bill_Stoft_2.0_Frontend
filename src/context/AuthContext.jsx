@@ -53,11 +53,13 @@ export const AuthProvider = ({ children }) => {
       return { success: true, data };
     } catch (error) {
       console.error('Login error:', error);
-      const detail =
-        error.response?.data?.message ||
-        error.response?.data?.detail ||
-        error.response?.data?.data?.non_field_errors?.[0] ||
-        'Invalid email or password. Please try again.';
+      const isNetworkError = !error.response;
+      const detail = isNetworkError
+        ? 'Cannot connect to backend server. Please check your network connection.'
+        : error.response?.data?.message ||
+          error.response?.data?.detail ||
+          error.response?.data?.data?.non_field_errors?.[0] ||
+          'Invalid email or password. Please try again.';
       return { success: false, message: detail };
     }
   };

@@ -3,102 +3,103 @@ import { createTheme } from '@mui/material/styles';
 const theme = createTheme({
   palette: {
     primary: {
-      main: '#2547eb',
-      dark: '#1d4ed8',
-      light: '#60a5fa',
-      contrastText: '#ffffff',
+      main: '#18181b',
+      dark: '#09090b',
+      light: '#27272a',
+      contrastText: '#fafafa',
     },
     secondary: {
-      main: '#0f172a',
-      dark: '#020617',
-      light: '#334155',
-      contrastText: '#ffffff',
+      main: '#f4f4f5',
+      dark: '#e4e4e7',
+      light: '#fafafa',
+      contrastText: '#18181b',
     },
     success: {
-      main: '#059669',
-      dark: '#047857',
-      light: '#34d399',
+      main: '#16a34a',
+      dark: '#15803d',
+      light: '#86efac',
       contrastText: '#ffffff',
     },
     warning: {
-      main: '#d97706',
-      dark: '#b45309',
-      light: '#fbbf24',
+      main: '#ea580c',
+      dark: '#c2410c',
+      light: '#fdba74',
       contrastText: '#ffffff',
     },
     error: {
-      main: '#e11d48',
-      dark: '#be123c',
-      light: '#f43f5e',
+      main: '#ef4444',
+      dark: '#dc2626',
+      light: '#fca5a5',
       contrastText: '#ffffff',
     },
     info: {
-      main: '#2547eb',
-      light: '#eff6ff',
+      main: '#18181b',
+      dark: '#09090b',
+      light: '#f4f4f5',
       contrastText: '#ffffff',
     },
     background: {
-      default: '#f8fafc',
+      default: '#ffffff',
       paper: '#ffffff',
     },
     text: {
-      primary: '#0f172a',
-      secondary: '#64748b',
-      disabled: '#94a3b8',
+      primary: '#09090b',
+      secondary: '#71717a',
+      disabled: '#a1a1aa',
     },
-    divider: '#e2e8f0',
+    divider: '#e4e4e7',
   },
   typography: {
     fontFamily: '"Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif',
     h1: {
       fontWeight: 700,
       letterSpacing: '-0.025em',
-      color: '#0f172a',
+      color: '#09090b',
     },
     h2: {
       fontWeight: 700,
       letterSpacing: '-0.02em',
-      color: '#0f172a',
+      color: '#09090b',
     },
     h3: {
       fontWeight: 600,
       letterSpacing: '-0.015em',
-      color: '#0f172a',
+      color: '#09090b',
     },
     h4: {
       fontWeight: 600,
       letterSpacing: '-0.01em',
-      color: '#0f172a',
+      color: '#09090b',
     },
     h5: {
       fontWeight: 600,
-      color: '#0f172a',
+      color: '#09090b',
     },
     h6: {
       fontWeight: 600,
-      color: '#0f172a',
+      color: '#09090b',
     },
     subtitle1: {
       fontWeight: 500,
-      color: '#0f172a',
+      color: '#09090b',
     },
     subtitle2: {
       fontWeight: 500,
-      color: '#64748b',
+      color: '#71717a',
     },
     body1: {
       fontSize: '0.875rem',
       lineHeight: 1.5,
-      color: '#0f172a',
+      color: '#09090b',
     },
     body2: {
       fontSize: '0.8125rem',
       lineHeight: 1.4,
-      color: '#64748b',
+      color: '#71717a',
     },
     button: {
       textTransform: 'none',
-      fontWeight: 600,
+      fontWeight: 500,
       letterSpacing: '0.01em',
     },
   },
@@ -110,25 +111,30 @@ const theme = createTheme({
       styleOverrides: {
         root: {
           textTransform: 'none',
-          borderRadius: 8,
-          fontWeight: 600,
+          borderRadius: 6,
+          fontWeight: 500,
           boxShadow: 'none',
+          transition: 'all 0.15s ease-in-out',
           '&:hover': {
-            boxShadow: '0 2px 6px rgba(37, 71, 235, 0.2)',
+            boxShadow: '0 1px 2px 0 rgba(0, 0, 0, 0.05)',
           },
         },
         containedPrimary: {
-          backgroundColor: '#2547eb',
+          backgroundColor: '#18181b',
+          color: '#fafafa',
+          border: '1px solid #18181b',
           '&:hover': {
-            backgroundColor: '#1d4ed8',
+            backgroundColor: '#27272a',
+            borderColor: '#27272a',
           },
         },
         outlinedSecondary: {
-          borderColor: '#cbd5e1',
-          color: '#0f172a',
+          borderColor: '#e4e4e7',
+          color: '#09090b',
+          backgroundColor: '#ffffff',
           '&:hover': {
-            backgroundColor: '#f8fafc',
-            borderColor: '#94a3b8',
+            backgroundColor: '#f4f4f5',
+            borderColor: '#d4d4d8',
           },
         },
       },
@@ -136,50 +142,58 @@ const theme = createTheme({
     MuiPaper: {
       styleOverrides: {
         root: {
-          borderRadius: 12,
-          boxShadow: '0 1px 3px 0 rgba(15, 23, 42, 0.04), 0 1px 2px -1px rgba(15, 23, 42, 0.02)',
-          border: '1px solid #e2e8f0',
+          borderRadius: 8,
+          boxShadow: '0 1px 3px 0 rgba(0, 0, 0, 0.05), 0 1px 2px -1px rgba(0, 0, 0, 0.03)',
+          border: '1px solid #e4e4e7',
+          backgroundImage: 'none',
         },
       },
     },
     MuiCard: {
       styleOverrides: {
         root: {
-          borderRadius: 14,
-          border: '1px solid #e2e8f0',
-          boxShadow: '0 1px 3px 0 rgba(15, 23, 42, 0.04), 0 1px 2px -1px rgba(15, 23, 42, 0.02)',
+          borderRadius: 8,
+          border: '1px solid #e4e4e7',
+          boxShadow: '0 1px 3px 0 rgba(0, 0, 0, 0.05), 0 1px 2px -1px rgba(0, 0, 0, 0.03)',
+          backgroundImage: 'none',
         },
       },
     },
     MuiDialog: {
       styleOverrides: {
         paper: {
-          borderRadius: 16,
-          boxShadow: '0 20px 25px -5px rgba(15, 23, 42, 0.08), 0 8px 10px -6px rgba(15, 23, 42, 0.04)',
+          borderRadius: 12,
+          border: '1px solid #e4e4e7',
+          boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.05)',
         },
       },
     },
     MuiChip: {
       styleOverrides: {
         root: {
-          borderRadius: 9999,
-          fontWeight: 600,
+          borderRadius: 6,
+          fontWeight: 500,
+          border: '1px solid #e4e4e7',
+          backgroundColor: '#f4f4f5',
+          color: '#18181b',
         },
       },
     },
     MuiOutlinedInput: {
       styleOverrides: {
         root: {
-          borderRadius: 8,
+          borderRadius: 6,
+          backgroundColor: '#ffffff',
           '& .MuiOutlinedInput-notchedOutline': {
-            borderColor: '#cbd5e1',
+            borderColor: '#e4e4e7',
           },
           '&:hover .MuiOutlinedInput-notchedOutline': {
-            borderColor: '#94a3b8',
+            borderColor: '#d4d4d8',
           },
           '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
-            borderColor: '#2547eb',
-            borderWidth: '2px',
+            borderColor: '#18181b',
+            borderWidth: '1px',
+            boxShadow: '0 0 0 1px #18181b',
           },
         },
       },

@@ -111,13 +111,11 @@ export default function ForgotPasswordPage() {
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
-        bgcolor: '#0f172a',
-        backgroundImage:
-          'radial-gradient(at 0% 0%, rgba(37, 71, 235, 0.15) 0px, transparent 50%), radial-gradient(at 100% 100%, rgba(37, 71, 235, 0.1) 0px, transparent 50%)',
+        bgcolor: '#fafafa',
         p: 2,
       }}
     >
-      <Box sx={{ width: '100%', maxWidth: 440 }}>
+      <Box sx={{ width: '100%', maxWidth: 420 }}>
         {/* Brand Header */}
         <Box sx={{ textAlign: 'center', mb: 3 }}>
           <Box
@@ -125,43 +123,43 @@ export default function ForgotPasswordPage() {
               display: 'inline-flex',
               alignItems: 'center',
               justifyContent: 'center',
-              width: 52,
-              height: 52,
-              borderRadius: '12px',
-              bgcolor: '#2547eb',
-              color: '#ffffff',
-              boxShadow: '0 4px 14px rgba(37, 71, 235, 0.4)',
+              width: 44,
+              height: 44,
+              borderRadius: '8px',
+              bgcolor: '#18181b',
+              color: '#fafafa',
+              boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1)',
               mb: 1.5,
             }}
           >
-            <InventoryIcon sx={{ fontSize: 28 }} />
+            <InventoryIcon sx={{ fontSize: 24 }} />
           </Box>
-          <Typography variant="h5" sx={{ fontWeight: 800, color: '#ffffff', letterSpacing: '-0.02em' }}>
+          <Typography variant="h5" sx={{ fontWeight: 700, color: '#09090b', letterSpacing: '-0.02em' }}>
             ELBAT ERP
           </Typography>
-          <Typography variant="body2" sx={{ color: '#94a3b8', mt: 0.5 }}>
+          <Typography variant="body2" sx={{ color: '#71717a', mt: 0.5 }}>
             Account Password Recovery
           </Typography>
         </Box>
 
         <Card
-          elevation={4}
+          elevation={0}
           sx={{
-            borderRadius: 3,
-            border: '1px solid #1e293b',
+            borderRadius: 2,
+            border: '1px solid #e4e4e7',
             bgcolor: '#ffffff',
-            boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.3), 0 10px 10px -5px rgba(0, 0, 0, 0.2)',
+            boxShadow: '0 1px 3px 0 rgba(0, 0, 0, 0.05), 0 1px 2px 0 rgba(0, 0, 0, 0.03)',
           }}
         >
-          <CardContent sx={{ p: { xs: 3, sm: 4 } }}>
+          <CardContent sx={{ p: { xs: 3, sm: 3.5 } }}>
             {errorMsg && (
-              <Alert severity="error" sx={{ mb: 2.5, borderRadius: 2, fontSize: '0.85rem' }}>
+              <Alert severity="error" sx={{ mb: 2.5, borderRadius: 1.5, fontSize: '0.85rem' }}>
                 {errorMsg}
               </Alert>
             )}
 
             {successMsg && step === 2 && (
-              <Alert severity="success" sx={{ mb: 2.5, borderRadius: 2, fontSize: '0.85rem' }}>
+              <Alert severity="success" sx={{ mb: 2.5, borderRadius: 1.5, fontSize: '0.85rem' }}>
                 {successMsg}
               </Alert>
             )}
@@ -169,17 +167,17 @@ export default function ForgotPasswordPage() {
             {/* Step 1: Request OTP */}
             {step === 1 && (
               <div>
-                <Typography variant="h6" sx={{ fontWeight: 700, color: '#0f172a', mb: 1 }}>
+                <Typography variant="h6" sx={{ fontWeight: 600, color: '#09090b', mb: 0.5, letterSpacing: '-0.01em' }}>
                   Reset Password
                 </Typography>
-                <Typography variant="body2" sx={{ color: '#64748b', mb: 3, fontSize: '0.875rem' }}>
+                <Typography variant="body2" sx={{ color: '#71717a', mb: 2.5, fontSize: '0.875rem' }}>
                   Enter your email address and we&apos;ll send a one-time verification code to recover your account.
                 </Typography>
 
                 <form onSubmit={handleRequestOtp}>
                   <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
                     <div>
-                      <Typography variant="caption" sx={{ display: 'block', mb: 0.75, fontWeight: 600, color: '#334155' }}>
+                      <Typography variant="caption" sx={{ display: 'block', mb: 0.75, fontWeight: 500, color: '#09090b' }}>
                         Registered Email Address
                       </Typography>
                       <TextField
@@ -193,8 +191,10 @@ export default function ForgotPasswordPage() {
                         size="small"
                         sx={{
                           '& .MuiOutlinedInput-root': {
-                            borderRadius: '8px',
-                            '&.Mui-focused fieldset': { borderColor: '#2547eb' },
+                            borderRadius: '6px',
+                            '& fieldset': { borderColor: '#e4e4e7' },
+                            '&:hover fieldset': { borderColor: '#a1a1aa' },
+                            '&.Mui-focused fieldset': { borderColor: '#18181b', borderWidth: '1px' },
                           },
                         }}
                       />
@@ -205,17 +205,18 @@ export default function ForgotPasswordPage() {
                       fullWidth
                       variant="contained"
                       disabled={loading}
-                      startIcon={loading ? <CircularProgress size={18} color="inherit" /> : <KeyIcon />}
+                      startIcon={loading ? <CircularProgress size={16} color="inherit" /> : <KeyIcon sx={{ fontSize: 16 }} />}
                       sx={{
                         mt: 1,
-                        py: 1.2,
-                        borderRadius: '8px',
-                        fontWeight: 700,
+                        py: 1,
+                        borderRadius: '6px',
+                        fontWeight: 500,
                         textTransform: 'none',
-                        fontSize: '0.95rem',
-                        bgcolor: '#2547eb',
-                        boxShadow: '0 4px 12px rgba(37, 71, 235, 0.3)',
-                        '&:hover': { bgcolor: '#1d4ed8' },
+                        fontSize: '0.875rem',
+                        bgcolor: '#18181b',
+                        color: '#fafafa',
+                        boxShadow: 'none',
+                        '&:hover': { bgcolor: '#27272a', boxShadow: 'none' },
                       }}
                     >
                       {loading ? 'Sending Code...' : 'Send Recovery Code'}
@@ -224,13 +225,14 @@ export default function ForgotPasswordPage() {
                     <Button
                       component={Link}
                       to="/login"
-                      startIcon={<ArrowBackIcon />}
+                      startIcon={<ArrowBackIcon sx={{ fontSize: 16 }} />}
                       sx={{
                         textTransform: 'none',
-                        color: '#64748b',
-                        fontWeight: 600,
+                        color: '#71717a',
+                        fontWeight: 500,
                         fontSize: '0.85rem',
-                        mt: 1,
+                        mt: 0.5,
+                        '&:hover': { color: '#09090b', bgcolor: '#f4f4f5' },
                       }}
                     >
                       Back to Sign In
@@ -243,17 +245,17 @@ export default function ForgotPasswordPage() {
             {/* Step 2: Verify OTP & Enter New Password */}
             {step === 2 && (
               <div>
-                <Typography variant="h6" sx={{ fontWeight: 700, color: '#0f172a', mb: 1 }}>
+                <Typography variant="h6" sx={{ fontWeight: 600, color: '#09090b', mb: 0.5, letterSpacing: '-0.01em' }}>
                   Enter Verification Code
                 </Typography>
-                <Typography variant="body2" sx={{ color: '#64748b', mb: 2.5, fontSize: '0.875rem' }}>
+                <Typography variant="body2" sx={{ color: '#71717a', mb: 2.5, fontSize: '0.875rem' }}>
                   Please enter the 6-digit code sent to <strong>{email}</strong> and choose a new password.
                 </Typography>
 
                 <form onSubmit={handleResetPassword}>
                   <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
                     <div>
-                      <Typography variant="caption" sx={{ display: 'block', mb: 0.75, fontWeight: 600, color: '#334155' }}>
+                      <Typography variant="caption" sx={{ display: 'block', mb: 0.75, fontWeight: 500, color: '#09090b' }}>
                         Verification Code (OTP)
                       </Typography>
                       <TextField
@@ -267,17 +269,19 @@ export default function ForgotPasswordPage() {
                         inputProps={{ maxLength: 6 }}
                         sx={{
                           '& .MuiOutlinedInput-root': {
-                            borderRadius: '8px',
+                            borderRadius: '6px',
                             letterSpacing: '0.2em',
                             fontWeight: 700,
-                            '&.Mui-focused fieldset': { borderColor: '#2547eb' },
+                            '& fieldset': { borderColor: '#e4e4e7' },
+                            '&:hover fieldset': { borderColor: '#a1a1aa' },
+                            '&.Mui-focused fieldset': { borderColor: '#18181b', borderWidth: '1px' },
                           },
                         }}
                       />
                     </div>
 
                     <div>
-                      <Typography variant="caption" sx={{ display: 'block', mb: 0.75, fontWeight: 600, color: '#334155' }}>
+                      <Typography variant="caption" sx={{ display: 'block', mb: 0.75, fontWeight: 500, color: '#09090b' }}>
                         New Password
                       </Typography>
                       <TextField
@@ -290,8 +294,10 @@ export default function ForgotPasswordPage() {
                         size="small"
                         sx={{
                           '& .MuiOutlinedInput-root': {
-                            borderRadius: '8px',
-                            '&.Mui-focused fieldset': { borderColor: '#2547eb' },
+                            borderRadius: '6px',
+                            '& fieldset': { borderColor: '#e4e4e7' },
+                            '&:hover fieldset': { borderColor: '#a1a1aa' },
+                            '&.Mui-focused fieldset': { borderColor: '#18181b', borderWidth: '1px' },
                           },
                         }}
                         InputProps={{
@@ -301,7 +307,7 @@ export default function ForgotPasswordPage() {
                                 size="small"
                                 onClick={() => setShowPassword(!showPassword)}
                                 edge="end"
-                                sx={{ color: '#94a3b8' }}
+                                sx={{ color: '#71717a' }}
                               >
                                 {showPassword ? <VisibilityOffIcon fontSize="small" /> : <VisibilityIcon fontSize="small" />}
                               </IconButton>
@@ -312,7 +318,7 @@ export default function ForgotPasswordPage() {
                     </div>
 
                     <div>
-                      <Typography variant="caption" sx={{ display: 'block', mb: 0.75, fontWeight: 600, color: '#334155' }}>
+                      <Typography variant="caption" sx={{ display: 'block', mb: 0.75, fontWeight: 500, color: '#09090b' }}>
                         Confirm New Password
                       </Typography>
                       <TextField
@@ -325,8 +331,10 @@ export default function ForgotPasswordPage() {
                         size="small"
                         sx={{
                           '& .MuiOutlinedInput-root': {
-                            borderRadius: '8px',
-                            '&.Mui-focused fieldset': { borderColor: '#2547eb' },
+                            borderRadius: '6px',
+                            '& fieldset': { borderColor: '#e4e4e7' },
+                            '&:hover fieldset': { borderColor: '#a1a1aa' },
+                            '&.Mui-focused fieldset': { borderColor: '#18181b', borderWidth: '1px' },
                           },
                         }}
                       />
@@ -337,17 +345,18 @@ export default function ForgotPasswordPage() {
                       fullWidth
                       variant="contained"
                       disabled={loading}
-                      startIcon={loading ? <CircularProgress size={18} color="inherit" /> : <CheckCircleIcon />}
+                      startIcon={loading ? <CircularProgress size={16} color="inherit" /> : <CheckCircleIcon sx={{ fontSize: 16 }} />}
                       sx={{
                         mt: 1,
-                        py: 1.2,
-                        borderRadius: '8px',
-                        fontWeight: 700,
+                        py: 1,
+                        borderRadius: '6px',
+                        fontWeight: 500,
                         textTransform: 'none',
-                        fontSize: '0.95rem',
-                        bgcolor: '#2547eb',
-                        boxShadow: '0 4px 12px rgba(37, 71, 235, 0.3)',
-                        '&:hover': { bgcolor: '#1d4ed8' },
+                        fontSize: '0.875rem',
+                        bgcolor: '#18181b',
+                        color: '#fafafa',
+                        boxShadow: 'none',
+                        '&:hover': { bgcolor: '#27272a', boxShadow: 'none' },
                       }}
                     >
                       {loading ? 'Updating Password...' : 'Save New Password'}
@@ -357,9 +366,10 @@ export default function ForgotPasswordPage() {
                       onClick={() => setStep(1)}
                       sx={{
                         textTransform: 'none',
-                        color: '#64748b',
-                        fontWeight: 600,
+                        color: '#71717a',
+                        fontWeight: 500,
                         fontSize: '0.85rem',
+                        '&:hover': { color: '#09090b', bgcolor: '#f4f4f5' },
                       }}
                     >
                       Resend Code / Change Email
@@ -372,11 +382,11 @@ export default function ForgotPasswordPage() {
             {/* Step 3: Success Confirmation */}
             {step === 3 && (
               <Box sx={{ textAlign: 'center', py: 2 }}>
-                <CheckCircleIcon sx={{ fontSize: 56, color: '#16a34a', mb: 1.5 }} />
-                <Typography variant="h6" sx={{ fontWeight: 700, color: '#0f172a', mb: 1 }}>
+                <CheckCircleIcon sx={{ fontSize: 48, color: '#18181b', mb: 1.5 }} />
+                <Typography variant="h6" sx={{ fontWeight: 600, color: '#09090b', mb: 1, letterSpacing: '-0.01em' }}>
                   Password Reset Successfully
                 </Typography>
-                <Typography variant="body2" sx={{ color: '#64748b', mb: 3 }}>
+                <Typography variant="body2" sx={{ color: '#71717a', mb: 3 }}>
                   Your password has been changed. You can now sign in with your new credentials.
                 </Typography>
                 <Button
@@ -384,13 +394,15 @@ export default function ForgotPasswordPage() {
                   variant="contained"
                   onClick={() => navigate('/login')}
                   sx={{
-                    py: 1.2,
-                    borderRadius: '8px',
-                    fontWeight: 700,
+                    py: 1,
+                    borderRadius: '6px',
+                    fontWeight: 500,
                     textTransform: 'none',
-                    fontSize: '0.95rem',
-                    bgcolor: '#2547eb',
-                    '&:hover': { bgcolor: '#1d4ed8' },
+                    fontSize: '0.875rem',
+                    bgcolor: '#18181b',
+                    color: '#fafafa',
+                    boxShadow: 'none',
+                    '&:hover': { bgcolor: '#27272a', boxShadow: 'none' },
                   }}
                 >
                   Proceed to Sign In

@@ -124,15 +124,16 @@ export default function MainLayout({ children }) {
   };
 
   return (
-    <Box sx={{ display: 'flex', minHeight: '100vh', bgcolor: '#f8fafc' }}>
-      {/* Sleek Enterprise Top AppBar */}
+    <Box sx={{ display: 'flex', minHeight: '100vh', bgcolor: '#fafafa' }}>
+      {/* Sleek Enterprise Top AppBar (shadcn/ui aesthetic) */}
       <AppBar
         position="fixed"
         elevation={0}
         sx={{
           zIndex: (t) => t.zIndex.drawer + 1,
-          bgcolor: '#0f172a',
-          borderBottom: '1px solid #1e293b',
+          bgcolor: '#ffffff',
+          color: '#09090b',
+          borderBottom: '1px solid #e4e4e7',
         }}
       >
         <Toolbar sx={{ justifyContent: 'space-between', px: { xs: 2, md: 3 } }}>
@@ -149,26 +150,25 @@ export default function MainLayout({ children }) {
                 }}
                 sx={{
                   p: 0,
-                  borderRadius: '8px',
-                  transition: 'transform 0.15s ease-in-out',
-                  '&:hover': { transform: 'scale(1.05)' },
+                  borderRadius: '6px',
+                  transition: 'opacity 0.15s ease-in-out',
+                  '&:hover': { opacity: 0.85 },
                 }}
               >
                 <Box
                   sx={{
-                    width: 36,
-                    height: 36,
-                    borderRadius: '8px',
-                    bgcolor: '#2547eb',
+                    width: 34,
+                    height: 34,
+                    borderRadius: '6px',
+                    bgcolor: '#18181b',
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
-                    color: '#ffffff',
-                    boxShadow: '0 2px 8px rgba(37,71,235,0.4)',
+                    color: '#fafafa',
                     cursor: 'pointer',
                   }}
                 >
-                  <InventoryIcon sx={{ fontSize: 20 }} />
+                  <InventoryIcon sx={{ fontSize: 18 }} />
                 </Box>
               </IconButton>
             </Tooltip>
@@ -182,10 +182,11 @@ export default function MainLayout({ children }) {
                 variant="subtitle1"
                 component="div"
                 sx={{
-                  fontWeight: 800,
-                  letterSpacing: '0.04em',
-                  color: '#ffffff',
+                  fontWeight: 700,
+                  letterSpacing: '-0.02em',
+                  color: '#09090b',
                   lineHeight: 1.1,
+                  fontSize: '0.95rem',
                 }}
               >
                 ELBAT
@@ -193,10 +194,10 @@ export default function MainLayout({ children }) {
               <Typography
                 variant="caption"
                 sx={{
-                  color: '#94a3b8',
+                  color: '#71717a',
                   fontSize: '0.7rem',
                   fontWeight: 500,
-                  letterSpacing: '0.02em',
+                  letterSpacing: '0.01em',
                 }}
               >
                 Stone & Marble ERP
@@ -205,22 +206,22 @@ export default function MainLayout({ children }) {
           </Box>
 
           {/* Status Indicators & Profile Actions */}
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.25 }}>
             {/* Live API status indicator */}
             <Box
               sx={{
                 display: { xs: 'none', sm: 'flex' },
                 alignItems: 'center',
                 gap: 0.75,
-                bgcolor: 'rgba(255,255,255,0.06)',
-                px: 1.5,
-                py: 0.5,
-                borderRadius: '9999px',
-                border: '1px solid rgba(255,255,255,0.1)',
+                bgcolor: '#f4f4f5',
+                px: 1.25,
+                py: 0.4,
+                borderRadius: '6px',
+                border: '1px solid #e4e4e7',
               }}
             >
-              <CircleIcon sx={{ fontSize: 8, color: '#22c55e' }} />
-              <Typography sx={{ color: '#e2e8f0', fontSize: '0.75rem', fontWeight: 500 }}>
+              <CircleIcon sx={{ fontSize: 7, color: '#16a34a' }} />
+              <Typography sx={{ color: '#71717a', fontSize: '0.75rem', fontWeight: 500 }}>
                 API Online
               </Typography>
             </Box>
@@ -230,12 +231,13 @@ export default function MainLayout({ children }) {
               label="dev"
               size="small"
               sx={{
-                height: 22,
+                height: 24,
                 fontSize: '0.7rem',
-                fontWeight: 700,
-                bgcolor: 'rgba(245, 158, 11, 0.15)',
-                color: '#f59e0b',
-                border: '1px solid rgba(245, 158, 11, 0.3)',
+                fontWeight: 600,
+                bgcolor: '#f4f4f5',
+                color: '#71717a',
+                border: '1px solid #e4e4e7',
+                borderRadius: '6px',
               }}
             />
 
@@ -245,15 +247,16 @@ export default function MainLayout({ children }) {
                 sx={{
                   display: { xs: 'none', md: 'flex' },
                   alignItems: 'center',
-                  gap: 1,
-                  px: 1.5,
-                  py: 0.5,
-                  borderRadius: '8px',
-                  bgcolor: 'rgba(255,255,255,0.05)',
+                  gap: 0.75,
+                  px: 1.25,
+                  py: 0.4,
+                  borderRadius: '6px',
+                  bgcolor: '#f4f4f5',
+                  border: '1px solid #e4e4e7',
                 }}
               >
-                <PeopleIcon sx={{ fontSize: 16, color: '#94a3b8' }} />
-                <Typography variant="body2" sx={{ color: '#f8fafc', fontWeight: 600, fontSize: '0.8rem' }}>
+                <PeopleIcon sx={{ fontSize: 15, color: '#71717a' }} />
+                <Typography variant="body2" sx={{ color: '#18181b', fontWeight: 500, fontSize: '0.78rem' }}>
                   {user.username || 'Admin'}
                 </Typography>
               </Box>
@@ -265,11 +268,13 @@ export default function MainLayout({ children }) {
               title="Logout"
               size="small"
               sx={{
-                color: '#94a3b8',
-                '&:hover': { color: '#ffffff', bgcolor: 'rgba(255,255,255,0.08)' },
+                color: '#71717a',
+                borderRadius: '6px',
+                p: 0.75,
+                '&:hover': { color: '#09090b', bgcolor: '#f4f4f5' },
               }}
             >
-              <LogoutIcon sx={{ fontSize: 20 }} />
+              <LogoutIcon sx={{ fontSize: 18 }} />
             </IconButton>
           </Box>
         </Toolbar>
@@ -287,32 +292,33 @@ export default function MainLayout({ children }) {
               width: currentDrawerWidth,
               boxSizing: 'border-box',
               bgcolor: '#ffffff',
-              borderRight: '1px solid #e2e8f0',
+              borderRight: '1px solid #e4e4e7',
               transition: 'width 0.2s ease-in-out',
               overflowX: 'hidden',
             },
           }}
         >
           <Toolbar />
-          <Box sx={{ overflowY: 'auto', px: sidebarCollapsed ? 1 : 2, py: 2.5, transition: 'padding 0.2s' }}>
+          <Box sx={{ overflowY: 'auto', px: sidebarCollapsed ? 1 : 1.5, py: 2, transition: 'padding 0.2s' }}>
             {navGroups.map((group, groupIdx) => (
-              <Box key={group.group} sx={{ mb: groupIdx === navGroups.length - 1 ? 0 : (sidebarCollapsed ? 1.5 : 2.5) }}>
+              <Box key={group.group} sx={{ mb: groupIdx === navGroups.length - 1 ? 0 : (sidebarCollapsed ? 1.5 : 2) }}>
                 {!sidebarCollapsed ? (
                   <Typography
                     sx={{
-                      px: 1.5,
-                      mb: 0.75,
+                      px: 1.25,
+                      mb: 0.5,
                       fontSize: '0.68rem',
-                      fontWeight: 700,
-                      color: '#94a3b8',
-                      letterSpacing: '0.08em',
+                      fontWeight: 600,
+                      color: '#a1a1aa',
+                      letterSpacing: '0.06em',
+                      textTransform: 'uppercase',
                       whiteSpace: 'nowrap',
                     }}
                   >
                     {group.group}
                   </Typography>
                 ) : (
-                  groupIdx > 0 && <Divider sx={{ my: 1, borderColor: '#f1f5f9' }} />
+                  groupIdx > 0 && <Divider sx={{ my: 1, borderColor: '#f4f4f5' }} />
                 )}
                 <List dense disablePadding>
                   {group.items.map((item) => {
@@ -326,32 +332,32 @@ export default function MainLayout({ children }) {
                         selected={selected}
                         onClick={() => handleNavClick(item.path)}
                         sx={{
-                          borderRadius: '8px',
-                          py: 0.9,
-                          px: sidebarCollapsed ? 1 : 1.5,
+                          borderRadius: '6px',
+                          py: 0.75,
+                          px: sidebarCollapsed ? 1 : 1.25,
                           justifyContent: sidebarCollapsed ? 'center' : 'initial',
-                          transition: 'all 0.15s ease-in-out',
+                          transition: 'all 0.12s ease-in-out',
                           '&.Mui-selected': {
-                            background: 'linear-gradient(135deg, #2547eb 0%, #1d4ed8 100%)',
-                            color: '#ffffff',
-                            boxShadow: '0 4px 12px rgba(37,71,235,0.25)',
-                            '& .MuiListItemIcon-root': { color: '#ffffff' },
+                            backgroundColor: '#f4f4f5',
+                            color: '#18181b',
+                            '& .MuiListItemIcon-root': { color: '#18181b' },
                             '&:hover': {
-                              background: 'linear-gradient(135deg, #1d4ed8 0%, #1e40af 100%)',
+                              backgroundColor: '#e4e4e7',
                             },
                           },
                           '&:not(.Mui-selected):hover': {
-                            bgcolor: '#f1f5f9',
-                            color: '#0f172a',
+                            bgcolor: '#fafafa',
+                            color: '#09090b',
+                            '& .MuiListItemIcon-root': { color: '#09090b' },
                           },
                         }}
                       >
                         <ListItemIcon
                           sx={{
-                            minWidth: sidebarCollapsed ? 'auto' : 32,
+                            minWidth: sidebarCollapsed ? 'auto' : 30,
                             justifyContent: 'center',
-                            color: selected ? '#ffffff' : '#64748b',
-                            '& svg': { fontSize: 20 },
+                            color: selected ? '#18181b' : '#71717a',
+                            '& svg': { fontSize: 18 },
                           }}
                         >
                           {item.icon}
@@ -361,9 +367,9 @@ export default function MainLayout({ children }) {
                             primary={
                               <Typography
                                 sx={{
-                                  fontSize: '0.84rem',
-                                  fontWeight: selected ? 700 : 500,
-                                  color: selected ? '#ffffff' : '#334155',
+                                  fontSize: '0.8125rem',
+                                  fontWeight: selected ? 600 : 500,
+                                  color: selected ? '#18181b' : '#52525b',
                                   whiteSpace: 'nowrap',
                                 }}
                               >
@@ -376,7 +382,7 @@ export default function MainLayout({ children }) {
                     );
 
                     return (
-                      <ListItem key={item.text} disablePadding sx={{ mb: 0.4 }}>
+                      <ListItem key={item.text} disablePadding sx={{ mb: 0.25 }}>
                         {sidebarCollapsed ? (
                           <Tooltip title={item.text} placement="right" arrow>
                             {buttonContent}
@@ -399,12 +405,14 @@ export default function MainLayout({ children }) {
         component="main"
         sx={{
           flexGrow: 1,
-          p: { xs: 2, sm: 3, md: 4 },
+          p: { xs: 2, sm: 3, md: 3.5 },
           width: { md: `calc(100% - ${currentDrawerWidth}px)` },
           transition: 'width 0.2s ease-in-out',
           mt: '64px',
           mb: isMobile ? '68px' : 0,
           overflowX: 'hidden',
+          bgcolor: '#fafafa',
+          minHeight: 'calc(100vh - 64px)',
         }}
       >
         {children}
@@ -413,14 +421,15 @@ export default function MainLayout({ children }) {
       {/* Mobile Fixed Bottom Navigation */}
       {isMobile && (
         <Paper
-          elevation={4}
+          elevation={0}
           sx={{
             position: 'fixed',
             bottom: 0,
             left: 0,
             right: 0,
             zIndex: (t) => t.zIndex.appBar,
-            borderTop: '1px solid #e2e8f0',
+            borderTop: '1px solid #e4e4e7',
+            bgcolor: '#ffffff',
           }}
         >
           <BottomNavigation
@@ -434,18 +443,22 @@ export default function MainLayout({ children }) {
             }}
             showLabels
             sx={{
-              height: 60,
+              height: 56,
+              bgcolor: '#ffffff',
               '& .Mui-selected': {
-                color: '#2547eb',
-                '& .MuiBottomNavigationAction-label': { fontWeight: 700 },
+                color: '#18181b',
+                '& .MuiBottomNavigationAction-label': { fontWeight: 600, fontSize: '0.72rem' },
+              },
+              '& .MuiBottomNavigationAction-root': {
+                color: '#71717a',
               },
             }}
           >
-            <BottomNavigationAction label="Home" value="/" icon={<DashboardIcon />} />
-            <BottomNavigationAction label="Bills" value="/bills" icon={<ReceiptIcon />} />
-            <BottomNavigationAction label="Stock" value="/current-stock" icon={<InventoryIcon />} />
-            <BottomNavigationAction label="Reports" value="/reports" icon={<AssessmentIcon />} />
-            <BottomNavigationAction label="Menu" value="more" icon={<MoreIcon />} />
+            <BottomNavigationAction label="Home" value="/" icon={<DashboardIcon sx={{ fontSize: 20 }} />} />
+            <BottomNavigationAction label="Bills" value="/bills" icon={<ReceiptIcon sx={{ fontSize: 20 }} />} />
+            <BottomNavigationAction label="Stock" value="/current-stock" icon={<InventoryIcon sx={{ fontSize: 20 }} />} />
+            <BottomNavigationAction label="Reports" value="/reports" icon={<AssessmentIcon sx={{ fontSize: 20 }} />} />
+            <BottomNavigationAction label="Menu" value="more" icon={<MoreIcon sx={{ fontSize: 20 }} />} />
           </BottomNavigation>
         </Paper>
       )}
@@ -459,17 +472,18 @@ export default function MainLayout({ children }) {
         sx={{
           zIndex: (t) => t.zIndex.modal + 1,
           [`& .MuiDrawer-paper`]: {
-            borderTopLeftRadius: 20,
-            borderTopRightRadius: 20,
+            borderTopLeftRadius: 16,
+            borderTopRightRadius: 16,
             maxHeight: '82vh',
             bgcolor: '#ffffff',
-            boxShadow: '0 -10px 25px rgba(0,0,0,0.1)',
+            borderTop: '1px solid #e4e4e7',
+            boxShadow: '0 -8px 20px rgba(0,0,0,0.06)',
           },
         }}
       >
         {/* Drawer Pull Handle */}
         <Box sx={{ display: 'flex', justifyContent: 'center', pt: 1.5, pb: 0.5 }}>
-          <Box sx={{ width: 44, height: 4, bgcolor: '#cbd5e1', borderRadius: 2 }} />
+          <Box sx={{ width: 36, height: 4, bgcolor: '#e4e4e7', borderRadius: 2 }} />
         </Box>
 
         {/* Drawer Header */}
@@ -480,18 +494,18 @@ export default function MainLayout({ children }) {
             justifyContent: 'space-between',
             px: 2.5,
             py: 1.5,
-            borderBottom: '1px solid #f1f5f9',
+            borderBottom: '1px solid #e4e4e7',
           }}
         >
           <Box>
-            <Typography variant="subtitle1" sx={{ fontWeight: 700, color: '#0f172a' }}>
+            <Typography variant="subtitle1" sx={{ fontWeight: 600, color: '#09090b', letterSpacing: '-0.01em' }}>
               All Modules & Applications
             </Typography>
-            <Typography variant="caption" sx={{ color: '#64748b' }}>
+            <Typography variant="caption" sx={{ color: '#71717a' }}>
               Select a module to navigate
             </Typography>
           </Box>
-          <IconButton size="small" onClick={() => setMobileMenuOpen(false)}>
+          <IconButton size="small" onClick={() => setMobileMenuOpen(false)} sx={{ color: '#71717a' }}>
             <CloseIcon fontSize="small" />
           </IconButton>
         </Box>
@@ -502,7 +516,7 @@ export default function MainLayout({ children }) {
             sx={{
               display: 'grid',
               gridTemplateColumns: { xs: 'repeat(3, 1fr)', sm: 'repeat(4, 1fr)' },
-              gap: 1.5,
+              gap: 1.25,
             }}
           >
             {allNavItems.map((item) => {
@@ -520,33 +534,32 @@ export default function MainLayout({ children }) {
                     alignItems: 'center',
                     justifyContent: 'center',
                     textAlign: 'center',
-                    minHeight: 86,
+                    minHeight: 82,
                     p: 1.5,
-                    border: '1.5px solid',
-                    borderColor: selected ? '#2547eb' : '#e2e8f0',
-                    borderRadius: 3,
-                    bgcolor: selected ? '#eff4ff' : '#ffffff',
+                    border: '1px solid',
+                    borderColor: selected ? '#18181b' : '#e4e4e7',
+                    borderRadius: 2,
+                    bgcolor: selected ? '#f4f4f5' : '#ffffff',
                     cursor: 'pointer',
                     transition: 'all 0.15s ease-in-out',
-                    boxShadow: selected ? '0 4px 12px rgba(37,71,235,0.15)' : 'none',
+                    boxShadow: selected ? '0 1px 2px rgba(0,0,0,0.06)' : 'none',
                     '&:hover': {
-                      borderColor: '#2547eb',
-                      bgcolor: selected ? '#eff4ff' : '#f8fafc',
-                      transform: 'translateY(-2px)',
+                      borderColor: '#18181b',
+                      bgcolor: '#f4f4f5',
                     },
                     '&:active': {
-                      transform: 'scale(0.95)',
+                      transform: 'scale(0.97)',
                     },
                   }}
                 >
                   <Box
                     sx={{
-                      color: selected ? '#2547eb' : '#334155',
+                      color: selected ? '#18181b' : '#71717a',
                       mb: 0.75,
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'center',
-                      '& svg': { fontSize: 26 },
+                      '& svg': { fontSize: 24 },
                     }}
                   >
                     {item.icon}
@@ -555,8 +568,8 @@ export default function MainLayout({ children }) {
                     variant="caption"
                     sx={{
                       fontSize: '0.72rem',
-                      fontWeight: selected ? 700 : 600,
-                      color: selected ? '#2547eb' : '#1e293b',
+                      fontWeight: selected ? 600 : 500,
+                      color: selected ? '#18181b' : '#09090b',
                       lineHeight: 1.2,
                       display: '-webkit-box',
                       WebkitLineClamp: 2,
@@ -575,3 +588,4 @@ export default function MainLayout({ children }) {
     </Box>
   );
 }
+
