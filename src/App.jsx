@@ -44,6 +44,7 @@ export default function App() {
                       <Route path="/bills/*" element={<PlaceholderPage title="Local Sale Bills" />} />
                       <Route path="/gst-bills/*" element={<GSTInvoiceList type="sale" />} />
                       <Route path="/purchase-gst-bills/*" element={<GSTInvoiceList type="purchase" />} />
+                      <Route path="/all-gst-bills/*" element={<GSTInvoiceList type="all" />} />
                       <Route path="/customers/*" element={<PlaceholderPage title="Customers" />} />
                       <Route path="/gst-customers/*" element={<GSTCustomersPage />} />
                       <Route path="/purchase-gst-suppliers/*" element={<GSTSuppliersPage />} />

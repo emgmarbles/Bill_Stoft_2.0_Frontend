@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { DataTable } from 'primereact/datatable';
 import { Column } from 'primereact/column';
 import { Button } from 'primereact/button';
@@ -20,6 +21,7 @@ const PAYMENT_FILTER_OPTIONS = [
 ];
 
 export default function GSTInvoiceList({ type = 'sale' }) {
+  const navigate = useNavigate();
   const [activeType, setActiveType] = useState(type || 'sale');
 
   useEffect(() => {
@@ -27,6 +29,17 @@ export default function GSTInvoiceList({ type = 'sale' }) {
       setActiveType(type);
     }
   }, [type]);
+
+  const handleTabChange = (targetType) => {
+    setActiveType(targetType);
+    if (targetType === 'purchase') {
+      navigate('/purchase-gst-bills');
+    } else if (targetType === 'all') {
+      navigate('/all-gst-bills');
+    } else {
+      navigate('/gst-bills');
+    }
+  };
 
   const isSale = activeType === 'sale';
   const isPurchase = activeType === 'purchase';
@@ -347,7 +360,7 @@ export default function GSTInvoiceList({ type = 'sale' }) {
         >
           <button
             type="button"
-            onClick={() => setActiveType('sale')}
+            onClick={() => handleTabChange('sale')}
             style={{
               padding: '6px 14px',
               fontSize: '0.85rem',
@@ -370,7 +383,7 @@ export default function GSTInvoiceList({ type = 'sale' }) {
 
           <button
             type="button"
-            onClick={() => setActiveType('purchase')}
+            onClick={() => handleTabChange('purchase')}
             style={{
               padding: '6px 14px',
               fontSize: '0.85rem',
@@ -393,7 +406,7 @@ export default function GSTInvoiceList({ type = 'sale' }) {
 
           <button
             type="button"
-            onClick={() => setActiveType('all')}
+            onClick={() => handleTabChange('all')}
             style={{
               padding: '6px 14px',
               fontSize: '0.85rem',

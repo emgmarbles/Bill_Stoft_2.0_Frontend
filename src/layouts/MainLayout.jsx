@@ -55,6 +55,7 @@ export const navGroups = [
       { text: 'Local Sale Bills', path: '/bills', icon: <ReceiptIcon /> },
       { text: 'GST Sell Bills', path: '/gst-bills', icon: <ReceiptIcon /> },
       { text: 'Purchase GST Bills', path: '/purchase-gst-bills', icon: <ReceiptIcon /> },
+      { text: 'All GST Invoices', path: '/all-gst-bills', icon: <ReceiptIcon /> },
     ],
   },
   {
