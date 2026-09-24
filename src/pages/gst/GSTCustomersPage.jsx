@@ -55,6 +55,7 @@ export default function GSTCustomersPage() {
   }, [fetchCustomers]);
 
   const handleOpenAdd = () => {
+    document.activeElement?.blur();
     setSelectedCustomer(null);
     setName('');
     setGstNumber('');
@@ -65,6 +66,7 @@ export default function GSTCustomersPage() {
   };
 
   const handleOpenEdit = (customer) => {
+    document.activeElement?.blur();
     setSelectedCustomer(customer);
     setName(customer.name || '');
     setGstNumber(customer.gst_number || '');
@@ -75,6 +77,7 @@ export default function GSTCustomersPage() {
   };
 
   const handleConfirmDelete = (customer) => {
+    document.activeElement?.blur();
     setSelectedCustomer(customer);
     setDeleteDialogVisible(true);
   };

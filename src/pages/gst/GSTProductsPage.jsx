@@ -73,6 +73,7 @@ export default function GSTProductsPage() {
   }, [fetchProducts]);
 
   const handleOpenAdd = () => {
+    document.activeElement?.blur();
     setSelectedProduct(null);
     setName('');
     setHsnCode('6802');
@@ -83,6 +84,7 @@ export default function GSTProductsPage() {
   };
 
   const handleOpenEdit = (prod) => {
+    document.activeElement?.blur();
     setSelectedProduct(prod);
     setName(prod.name || '');
     setHsnCode(prod.hsn_code || '');
@@ -93,6 +95,7 @@ export default function GSTProductsPage() {
   };
 
   const handleConfirmDelete = (prod) => {
+    document.activeElement?.blur();
     setSelectedProduct(prod);
     setDeleteDialogVisible(true);
   };

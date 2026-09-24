@@ -79,11 +79,13 @@ export default function GSTInvoiceList({ type = 'sale' }) {
 
   // Handlers
   const handleOpenCreate = () => {
+    document.activeElement?.blur();
     setSelectedInvoice(null);
     setFormDialogVisible(true);
   };
 
   const handleOpenEdit = async (inv) => {
+    document.activeElement?.blur();
     try {
       const fullInv = await gstService.getInvoice(inv.id);
       setSelectedInvoice(fullInv || inv);
@@ -94,6 +96,7 @@ export default function GSTInvoiceList({ type = 'sale' }) {
   };
 
   const handleOpenDetail = async (inv) => {
+    document.activeElement?.blur();
     try {
       const fullInv = await gstService.getInvoice(inv.id);
       setSelectedInvoice(fullInv || inv);
@@ -104,6 +107,7 @@ export default function GSTInvoiceList({ type = 'sale' }) {
   };
 
   const handleConfirmDelete = (inv) => {
+    document.activeElement?.blur();
     setSelectedInvoice(inv);
     setDeleteDialogVisible(true);
   };
@@ -195,7 +199,7 @@ export default function GSTInvoiceList({ type = 'sale' }) {
   const partyBodyTemplate = (rowData) => {
     const name = rowData.party_name || (isSale ? rowData.customer?.name : rowData.supplier?.name) || 'Unassigned';
     return (
-      <div>
+      <div className="gst-party-cell" style={{ textAlign: 'right' }}>
         <div style={{ fontWeight: 600, color: 'var(--text-main)' }}>{name}</div>
         {rowData.party_gstin && (
           <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }} className="tabular-nums">
@@ -209,7 +213,7 @@ export default function GSTInvoiceList({ type = 'sale' }) {
   // Action column template
   const actionBodyTemplate = (rowData) => {
     return (
-      <div style={{ display: 'flex', gap: '6px', justifyContent: 'flex-end' }}>
+      <div style={{ display: 'flex', gap: '6px', justifyContent: 'flex-end', width: '100%' }}>
         <Button
           icon="pi pi-eye"
           className="p-button-rounded p-button-text p-button-sm"
@@ -236,7 +240,7 @@ export default function GSTInvoiceList({ type = 'sale' }) {
   };
 
   return (
-    <div style={{ padding: '24px 28px', maxWidth: '1440px', margin: '0 auto' }}>
+    <div className="gst-invoice-page-container">
       <Toast ref={toast} />
 
       {/* Header Banner */}
@@ -288,6 +292,7 @@ export default function GSTInvoiceList({ type = 'sale' }) {
       {/* Summary KPI Cards */}
       {summary && (
         <div
+          className="gst-summary-grid"
           style={{
             display: 'grid',
             gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
@@ -409,13 +414,13 @@ export default function GSTInvoiceList({ type = 'sale' }) {
           breakpoint="960px"
           stripedRows
         >
-          <Column field="invoice_no" header="Invoice No" body={invoiceNoBodyTemplate} sortable style={{ width: '180px' }} />
+          <Column field="invoice_no" header="Invoice No" body={invoiceNoBodyTemplate} sortable headerStyle={{ width: '180px' }} />
           <Column
             field="invoice_date"
             header="Date"
             body={(row) => <span className="tabular-nums">{formatDate(row.invoice_date)}</span>}
             sortable
-            style={{ width: '120px' }}
+            headerStyle={{ width: '120px' }}
           />
           <Column field="party_name" header={partyHeader} body={partyBodyTemplate} sortable />
           <Column
@@ -429,14 +434,15 @@ export default function GSTInvoiceList({ type = 'sale' }) {
                   : '-'}
               </span>
             )}
-            style={{ width: '100px' }}
+            headerStyle={{ width: '100px' }}
           />
           <Column
             field="total_amount"
             header="Taxable (₹)"
             body={(row) => <span className="tabular-nums">₹{formatINR(row.total_amount)}</span>}
             sortable
-            style={{ textAlign: 'right', width: '140px' }}
+            headerStyle={{ textAlign: 'right', width: '140px' }}
+            bodyClassName="text-right"
           />
           <Column
             field="gst_amount"
@@ -447,7 +453,8 @@ export default function GSTInvoiceList({ type = 'sale' }) {
               </span>
             )}
             sortable
-            style={{ textAlign: 'right', width: '130px' }}
+            headerStyle={{ textAlign: 'right', width: '130px' }}
+            bodyClassName="text-right"
           />
           <Column
             field="grand_total_amount"
@@ -458,10 +465,11 @@ export default function GSTInvoiceList({ type = 'sale' }) {
               </strong>
             )}
             sortable
-            style={{ textAlign: 'right', width: '160px' }}
+            headerStyle={{ textAlign: 'right', width: '160px' }}
+            bodyClassName="text-right"
           />
-          <Column field="payment_status" header="Status" body={statusBodyTemplate} sortable style={{ width: '140px' }} />
-          <Column body={actionBodyTemplate} style={{ width: '130px', textAlign: 'right' }} />
+          <Column field="payment_status" header="Status" body={statusBodyTemplate} sortable headerStyle={{ width: '140px' }} />
+          <Column body={actionBodyTemplate} headerStyle={{ width: '130px', textAlign: 'right' }} />
         </DataTable>
       </div>
 

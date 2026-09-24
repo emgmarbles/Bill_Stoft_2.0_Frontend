@@ -55,6 +55,7 @@ export default function GSTSuppliersPage() {
   }, [fetchSuppliers]);
 
   const handleOpenAdd = () => {
+    document.activeElement?.blur();
     setSelectedSupplier(null);
     setName('');
     setGstNumber('');
@@ -65,6 +66,7 @@ export default function GSTSuppliersPage() {
   };
 
   const handleOpenEdit = (supplier) => {
+    document.activeElement?.blur();
     setSelectedSupplier(supplier);
     setName(supplier.name || '');
     setGstNumber(supplier.gst_number || '');
@@ -75,6 +77,7 @@ export default function GSTSuppliersPage() {
   };
 
   const handleConfirmDelete = (supplier) => {
+    document.activeElement?.blur();
     setSelectedSupplier(supplier);
     setDeleteDialogVisible(true);
   };

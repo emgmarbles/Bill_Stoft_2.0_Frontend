@@ -326,6 +326,91 @@ a {
   padding: 12px 14px !important;
 }
 
+/* Responsive Stack DataTable (Mobile Card View) */
+.p-datatable.p-datatable-responsive-stack .p-datatable-tbody > tr > td {
+  box-sizing: border-box !important;
+}
+
+@media screen and (max-width: 960px) {
+  .gst-invoice-page-container {
+    padding: 14px 10px !important;
+  }
+
+  .gst-summary-grid {
+    grid-template-columns: repeat(2, 1fr) !important;
+    gap: 10px !important;
+  }
+
+  .p-datatable.p-datatable-responsive-stack {
+    border: none !important;
+    background: transparent !important;
+  }
+
+  .p-datatable.p-datatable-responsive-stack .p-datatable-thead {
+    display: none !important;
+  }
+
+  .p-datatable.p-datatable-responsive-stack .p-datatable-tbody {
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 12px !important;
+    background: transparent !important;
+  }
+
+  .p-datatable.p-datatable-responsive-stack .p-datatable-tbody > tr {
+    display: flex !important;
+    flex-direction: column !important;
+    width: 100% !important;
+    background: #ffffff !important;
+    border: 1px solid #e4e4e7 !important;
+    border-radius: 8px !important;
+    padding: 12px 14px !important;
+    box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.04) !important;
+    box-sizing: border-box !important;
+    margin-bottom: 0 !important;
+  }
+
+  .p-datatable.p-datatable-responsive-stack .p-datatable-tbody > tr > td {
+    display: flex !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    min-width: 100% !important;
+    box-sizing: border-box !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+    padding: 8px 0 !important;
+    border: none !important;
+    border-bottom: 1px solid #f4f4f5 !important;
+    text-align: right !important;
+  }
+
+  .p-datatable.p-datatable-responsive-stack .p-datatable-tbody > tr > td:last-child {
+    border-bottom: none !important;
+    padding-top: 10px !important;
+    padding-bottom: 2px !important;
+    justify-content: flex-end !important;
+  }
+
+  .p-datatable.p-datatable-responsive-stack .p-datatable-tbody > tr > td .p-column-title {
+    display: inline-block !important;
+    font-size: 0.78rem !important;
+    font-weight: 600 !important;
+    color: #71717a !important;
+    text-transform: uppercase !important;
+    letter-spacing: 0.03em !important;
+    margin-right: 12px !important;
+    text-align: left !important;
+    flex-shrink: 0 !important;
+  }
+
+  .p-datatable.p-datatable-responsive-stack .p-datatable-tbody > tr > td .gst-party-cell {
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: flex-end !important;
+    text-align: right !important;
+  }
+}
+
 .p-paginator {
   background: #ffffff !important;
   border: none !important;

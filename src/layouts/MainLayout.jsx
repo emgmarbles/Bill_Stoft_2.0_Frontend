@@ -141,7 +141,8 @@ export default function MainLayout({ children }) {
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
             <Tooltip title={isMobile ? "Menu" : (sidebarCollapsed ? "Expand Sidebar" : "Collapse Sidebar")} arrow>
               <IconButton
-                onClick={() => {
+                onClick={(e) => {
+                  e.currentTarget.blur();
                   if (isMobile) {
                     setMobileMenuOpen(true);
                   } else {
@@ -436,6 +437,7 @@ export default function MainLayout({ children }) {
             value={getBottomNavValue()}
             onChange={(_, newValue) => {
               if (newValue === 'more') {
+                document.activeElement?.blur();
                 setMobileMenuOpen(true);
               } else {
                 handleNavClick(newValue);
@@ -468,7 +470,12 @@ export default function MainLayout({ children }) {
         anchor="bottom"
         open={mobileMenuOpen}
         onClose={() => setMobileMenuOpen(false)}
-        onOpen={() => setMobileMenuOpen(true)}
+        onOpen={() => {
+          document.activeElement?.blur();
+          setMobileMenuOpen(true);
+        }}
+        disableRestoreFocus
+        autoFocus
         sx={{
           zIndex: (t) => t.zIndex.modal + 1,
           [`& .MuiDrawer-paper`]: {
