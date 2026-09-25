@@ -339,6 +339,15 @@ a {
   box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.08), 0 2px 4px -2px rgba(0, 0, 0, 0.04) !important;
   background: #ffffff !important;
   padding: 4px !important;
+  z-index: 3000 !important;
+}
+
+/* Ensure all PrimeReact overlay panels, dropdown menus, and pickers sit above modals (mask=2500) */
+.p-overlaypanel,
+.p-multiselect-panel,
+.p-autocomplete-panel,
+.p-datepicker {
+  z-index: 3000 !important;
 }
 
 .p-dropdown-panel .p-dropdown-items .p-dropdown-item {

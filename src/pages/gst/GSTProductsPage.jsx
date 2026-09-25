@@ -8,6 +8,7 @@ import { Dialog } from 'primereact/dialog';
 import { Toast } from 'primereact/toast';
 import { Tag } from 'primereact/tag';
 import gstService from '../../services/gstService';
+import useDebounce from '../../hooks/useDebounce';
 
 const PRODUCT_TYPES = [
   { label: 'Granite', value: 'granite' },
@@ -27,6 +28,7 @@ export default function GSTProductsPage() {
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
+  const debouncedSearch = useDebounce(search, 350);
   const [typeFilter, setTypeFilter] = useState(null);
 
   // Dialog states
@@ -49,7 +51,7 @@ export default function GSTProductsPage() {
     setLoading(true);
     try {
       const params = {
-        ...(search.trim() && { search: search.trim() }),
+        ...(debouncedSearch.trim() && { search: debouncedSearch.trim() }),
         ...(typeFilter && { type: typeFilter }),
       };
       const data = await gstService.getProducts(params);
@@ -66,7 +68,7 @@ export default function GSTProductsPage() {
     } finally {
       setLoading(false);
     }
-  }, [search, typeFilter]);
+  }, [debouncedSearch, typeFilter]);
 
   useEffect(() => {
     fetchProducts();
@@ -299,6 +301,7 @@ export default function GSTProductsPage() {
           options={[{ label: 'All Stone Categories', value: null }, ...PRODUCT_TYPES]}
           onChange={(e) => setTypeFilter(e.value)}
           placeholder="Filter by Category"
+          appendTo={typeof document !== 'undefined' ? document.body : undefined}
           style={{ width: '220px' }}
         />
       </div>
@@ -386,6 +389,7 @@ export default function GSTProductsPage() {
               value={productType}
               options={PRODUCT_TYPES}
               onChange={(e) => setProductType(e.value)}
+              appendTo={typeof document !== 'undefined' ? document.body : undefined}
               style={{ width: '100%' }}
             />
           </div>
@@ -411,6 +415,7 @@ export default function GSTProductsPage() {
                 value={gstRate}
                 options={GST_RATES}
                 onChange={(e) => setGstRate(e.value)}
+                appendTo={typeof document !== 'undefined' ? document.body : undefined}
                 style={{ width: '100%' }}
               />
             </div>

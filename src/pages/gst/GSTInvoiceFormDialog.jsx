@@ -155,6 +155,10 @@ function calculateDistribution(currentItems, grandTotalVal, rate) {
   }
 }
 
+let cachedProducts = null;
+let cachedCustomers = null;
+let cachedSuppliers = null;
+
 export default function GSTInvoiceFormDialog({
   visible,
   invoice,
@@ -209,9 +213,14 @@ export default function GSTInvoiceFormDialog({
   const [paymentDate, setPaymentDate] = useState(null);
   const [chequeNo, setChequeNo] = useState('');
 
-  // Auxiliary data
-  const [partiesList, setPartiesList] = useState([]);
-  const [productsList, setProductsList] = useState([]);
+  // Auxiliary data with instant in-memory cache
+  const [partiesList, setPartiesList] = useState(() => {
+    if (invoiceType === 'purchase' && cachedSuppliers) return cachedSuppliers;
+    if (cachedCustomers) return cachedCustomers;
+    return [];
+  });
+  const [productsList, setProductsList] = useState(() => cachedProducts || []);
+  const [loadingData, setLoadingData] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
 
@@ -233,9 +242,14 @@ export default function GSTInvoiceFormDialog({
     setPartyName('');
     setPartyAddress('');
     setPartyGstin('');
+    if (newType === 'sale' && cachedCustomers) {
+      setPartiesList(cachedCustomers);
+    } else if (newType === 'purchase' && cachedSuppliers) {
+      setPartiesList(cachedSuppliers);
+    }
   };
 
-  // Fetch parties and products master
+  // Fetch parties and products master with cache and large size limit
   useEffect(() => {
     if (!visible) return;
 
@@ -251,14 +265,30 @@ export default function GSTInvoiceFormDialog({
 
     const loadData = async () => {
       setErrorMsg('');
+      const hasParties = currentType === 'sale' ? Boolean(cachedCustomers) : Boolean(cachedSuppliers);
+      if (!hasParties || !cachedProducts) {
+        setLoadingData(true);
+      }
       try {
         const [partiesRes, productsRes] = await Promise.all([
-          currentType === 'sale' ? gstService.getCustomers() : gstService.getSuppliers(),
-          gstService.getProducts(),
+          currentType === 'sale'
+            ? gstService.getCustomers({ size: 1000 })
+            : gstService.getSuppliers({ size: 1000 }),
+          cachedProducts ? Promise.resolve(cachedProducts) : gstService.getProducts({ size: 1000 }),
         ]);
         if (isCancelled) return;
-        setPartiesList(extractList(partiesRes));
-        setProductsList(extractList(productsRes));
+        const parties = extractList(partiesRes);
+        const products = extractList(productsRes);
+
+        if (currentType === 'sale') {
+          cachedCustomers = parties;
+        } else {
+          cachedSuppliers = parties;
+        }
+        cachedProducts = products;
+
+        setPartiesList(parties);
+        setProductsList(products);
 
         if (!isEdit) {
           // Fetch next auto invoice number for currentType
@@ -274,6 +304,10 @@ export default function GSTInvoiceFormDialog({
       } catch (err) {
         if (!isCancelled) {
           console.error('Failed to load initial data', err);
+        }
+      } finally {
+        if (!isCancelled) {
+          setLoadingData(false);
         }
       }
     };
@@ -818,9 +852,14 @@ export default function GSTInvoiceFormDialog({
               optionLabel="name"
               optionValue="id"
               onChange={handlePartyChange}
-              placeholder={`Choose ${isSale ? 'Customer' : 'Supplier'}...`}
+              placeholder={loadingData && partiesList.length === 0 ? 'Loading parties...' : `Choose ${isSale ? 'Customer' : 'Supplier'}...`}
               filter
+              filterBy="name,gst_number"
               showClear
+              loading={loadingData && partiesList.length === 0}
+              emptyMessage="No parties found"
+              emptyFilterMessage="No matching party found"
+              appendTo={typeof document !== 'undefined' ? document.body : undefined}
               style={{ width: '100%' }}
             />
           </div>
@@ -921,8 +960,13 @@ export default function GSTInvoiceFormDialog({
                           optionLabel="name"
                           optionValue="id"
                           onChange={(e) => handleProductChange(idx, e.value)}
-                          placeholder="Select stone product..."
+                          placeholder={loadingData && productsList.length === 0 ? 'Loading products...' : 'Select stone product...'}
                           filter
+                          filterBy="name,hsn_code"
+                          loading={loadingData && productsList.length === 0}
+                          emptyMessage="No products found"
+                          emptyFilterMessage="No matching product found"
+                          appendTo={typeof document !== 'undefined' ? document.body : undefined}
                           style={{ width: '100%' }}
                         />
                       </td>
@@ -1120,6 +1164,7 @@ export default function GSTInvoiceFormDialog({
                 value={gstRatePercent}
                 options={DEFAULT_GST_RATES}
                 onChange={(e) => handleGstRateChange(e.value)}
+                appendTo={typeof document !== 'undefined' ? document.body : undefined}
                 style={{ width: '220px', maxWidth: '100%' }}
               />
             </div>
@@ -1306,6 +1351,7 @@ export default function GSTInvoiceFormDialog({
                   value={paymentStatus}
                   options={PAYMENT_STATUS_OPTIONS}
                   onChange={(e) => setPaymentStatus(e.value)}
+                  appendTo={typeof document !== 'undefined' ? document.body : undefined}
                   style={{ width: '100%' }}
                 />
               </div>
@@ -1318,6 +1364,7 @@ export default function GSTInvoiceFormDialog({
                   value={paymentMethod}
                   options={PAYMENT_METHOD_OPTIONS}
                   onChange={(e) => setPaymentMethod(e.value)}
+                  appendTo={typeof document !== 'undefined' ? document.body : undefined}
                   style={{ width: '100%' }}
                 />
               </div>

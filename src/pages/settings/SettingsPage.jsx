@@ -9,11 +9,13 @@ import { Tag } from 'primereact/tag';
 import { Toast } from 'primereact/toast';
 import { Checkbox } from 'primereact/checkbox';
 import { companyProfileService } from '../../services/companyProfileService';
+import useDebounce from '../../hooks/useDebounce';
 
 export default function SettingsPage() {
   const [profiles, setProfiles] = useState([]);
   const [loading, setLoading] = useState(false);
   const [search, setSearch] = useState('');
+  const debouncedSearch = useDebounce(search, 350);
 
   // Dialog state
   const [dialogVisible, setDialogVisible] = useState(false);
@@ -54,7 +56,7 @@ export default function SettingsPage() {
     try {
       setLoading(true);
       const params = {};
-      if (search.trim()) params.search = search.trim();
+      if (debouncedSearch.trim()) params.search = debouncedSearch.trim();
       const res = await companyProfileService.getCompanyProfiles(params);
       const list = res.results || res;
       setProfiles(Array.isArray(list) ? list : []);
@@ -69,7 +71,7 @@ export default function SettingsPage() {
     } finally {
       setLoading(false);
     }
-  }, [search]);
+  }, [debouncedSearch]);
 
   useEffect(() => {
     fetchProfiles();

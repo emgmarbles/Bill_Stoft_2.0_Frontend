@@ -9,11 +9,13 @@ import { Toast } from 'primereact/toast';
 import { Tag } from 'primereact/tag';
 import gstService from '../../services/gstService';
 import { formatDate } from '../../utils/formatters';
+import useDebounce from '../../hooks/useDebounce';
 
 export default function GSTSuppliersPage() {
   const [suppliers, setSuppliers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
+  const debouncedSearch = useDebounce(search, 350);
 
   // Dialog states
   const [dialogVisible, setDialogVisible] = useState(false);
@@ -34,7 +36,7 @@ export default function GSTSuppliersPage() {
   const fetchSuppliers = useCallback(async () => {
     setLoading(true);
     try {
-      const data = await gstService.getSuppliers({ search: search.trim() || undefined });
+      const data = await gstService.getSuppliers({ search: debouncedSearch.trim() || undefined });
       const list = Array.isArray(data) ? data : data.results || [];
       setSuppliers(list);
     } catch (err) {
@@ -48,7 +50,7 @@ export default function GSTSuppliersPage() {
     } finally {
       setLoading(false);
     }
-  }, [search]);
+  }, [debouncedSearch]);
 
   useEffect(() => {
     fetchSuppliers();

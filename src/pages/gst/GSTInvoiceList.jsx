@@ -10,6 +10,7 @@ import { Toast } from 'primereact/toast';
 import { Dialog } from 'primereact/dialog';
 import gstService from '../../services/gstService';
 import { formatINR, formatDate } from '../../utils/formatters';
+import useDebounce from '../../hooks/useDebounce';
 import GSTInvoiceFormDialog from './GSTInvoiceFormDialog';
 import GSTInvoiceDetailDialog from './GSTInvoiceDetailDialog';
 
@@ -68,6 +69,7 @@ export default function GSTInvoiceList({ type = 'sale' }) {
   const [loading, setLoading] = useState(true);
   const [summary, setSummary] = useState(null);
   const [search, setSearch] = useState('');
+  const debouncedSearch = useDebounce(search, 350);
   const [paymentStatusFilter, setPaymentStatusFilter] = useState(null);
 
   // Dialog states
@@ -85,7 +87,7 @@ export default function GSTInvoiceList({ type = 'sale' }) {
     try {
       const params = {
         ...(activeType !== 'all' && { invoice_type: activeType }),
-        ...(search.trim() && { search: search.trim() }),
+        ...(debouncedSearch.trim() && { search: debouncedSearch.trim() }),
         ...(paymentStatusFilter && { payment_status: paymentStatusFilter }),
       };
 
@@ -109,7 +111,7 @@ export default function GSTInvoiceList({ type = 'sale' }) {
     } finally {
       setLoading(false);
     }
-  }, [activeType, search, paymentStatusFilter]);
+  }, [activeType, debouncedSearch, paymentStatusFilter]);
 
   useEffect(() => {
     fetchInvoices();
@@ -531,6 +533,7 @@ export default function GSTInvoiceList({ type = 'sale' }) {
             options={PAYMENT_FILTER_OPTIONS}
             onChange={(e) => setPaymentStatusFilter(e.value)}
             placeholder="Payment Status"
+            appendTo={typeof document !== 'undefined' ? document.body : undefined}
             style={{ width: '200px' }}
           />
         </div>
