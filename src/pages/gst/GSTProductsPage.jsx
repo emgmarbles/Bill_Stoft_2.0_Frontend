@@ -351,8 +351,11 @@ export default function GSTProductsPage() {
       <Dialog
         header={selectedProduct ? `Edit Product: ${selectedProduct.name}` : 'Add New GST Product'}
         visible={dialogVisible}
-        style={{ width: '500px' }}
+        style={{ width: '500px', maxWidth: '96vw' }}
+        breakpoints={{ '960px': '90vw', '640px': '98vw' }}
+        position="center"
         modal
+        appendTo={typeof document !== 'undefined' ? document.body : undefined}
         footer={dialogFooter}
         onHide={() => setDialogVisible(false)}
       >
@@ -419,8 +422,11 @@ export default function GSTProductsPage() {
       <Dialog
         header="Confirm Product Deletion"
         visible={deleteDialogVisible}
-        style={{ width: '420px' }}
+        style={{ width: '420px', maxWidth: '96vw' }}
+        breakpoints={{ '960px': '90vw', '640px': '98vw' }}
+        position="center"
         modal
+        appendTo={typeof document !== 'undefined' ? document.body : undefined}
         onHide={() => setDeleteDialogVisible(false)}
         footer={
           <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px' }}>

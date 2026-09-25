@@ -1,15 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Box,
-  Drawer,
-  AppBar,
-  Toolbar,
   Typography,
-  List,
-  ListItem,
-  ListItemButton,
-  ListItemIcon,
-  ListItemText,
   IconButton,
   BottomNavigation,
   BottomNavigationAction,
@@ -20,6 +12,11 @@ import {
   SwipeableDrawer,
   Chip,
   Tooltip,
+  Avatar,
+  Menu,
+  MenuItem,
+  ListItemIcon,
+  ListItemText,
 } from '@mui/material';
 import {
   Dashboard as DashboardIcon,
@@ -37,65 +34,132 @@ import {
   Close as CloseIcon,
   Logout as LogoutIcon,
   Circle as CircleIcon,
+  ChevronRight as ChevronRightIcon,
+  UnfoldMore as UnfoldMoreIcon,
 } from '@mui/icons-material';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 
-const DRAWER_WIDTH = 270;
-const COLLAPSED_DRAWER_WIDTH = 72;
+const SIDEBAR_WIDTH = 260;
+const SIDEBAR_COLLAPSED_WIDTH = 68;
 
-export const navGroups = [
+// shadcn/ui SidebarLeft icon (panel-left)
+function SidebarLeftIcon(props) {
+  return (
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      width="18"
+      height="18"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      style={{ display: 'block' }}
+      {...props}
+    >
+      <rect width="18" height="18" x="3" y="3" rx="2" />
+      <path d="M9 3v18" />
+    </svg>
+  );
+}
+
+const navGroups = [
   {
-    group: 'MAIN',
-    items: [{ text: 'Dashboard', path: '/', icon: <DashboardIcon /> }],
-  },
-  {
-    group: 'SALES & INVOICING',
+    group: 'Platform',
     items: [
-      { text: 'Local Sale Bills', path: '/bills', icon: <ReceiptIcon /> },
-      { text: 'GST Sell Bills', path: '/gst-bills', icon: <ReceiptIcon /> },
-      { text: 'Purchase GST Bills', path: '/purchase-gst-bills', icon: <ReceiptIcon /> },
-      { text: 'All GST Invoices', path: '/all-gst-bills', icon: <ReceiptIcon /> },
+      { text: 'Dashboard', path: '/', icon: <DashboardIcon sx={{ fontSize: 18 }} /> },
     ],
   },
   {
-    group: 'PARTIES & ACCOUNTS',
+    group: 'Sales & Invoicing',
     items: [
-      { text: 'Customers', path: '/customers', icon: <PeopleIcon /> },
-      { text: 'GST Customers', path: '/gst-customers', icon: <PeopleIcon /> },
-      { text: 'Purchase Suppliers', path: '/purchase-gst-suppliers', icon: <PeopleIcon /> },
+      { text: 'Local Sale Bills', path: '/bills', icon: <ReceiptIcon sx={{ fontSize: 18 }} /> },
+      {
+        text: 'GST Billing',
+        icon: <ReceiptIcon sx={{ fontSize: 18 }} />,
+        subItems: [
+          { text: 'GST Sell Bills', path: '/gst-bills' },
+          { text: 'Purchase GST Bills', path: '/purchase-gst-bills' },
+          { text: 'All GST Invoices', path: '/all-gst-bills' },
+        ],
+      },
     ],
   },
   {
-    group: 'INVENTORY & LOGISTICS',
+    group: 'Parties & Accounts',
     items: [
-      { text: 'Products Catalog', path: '/products', icon: <CategoryIcon /> },
-      { text: 'GST Products', path: '/gst-products', icon: <CategoryIcon /> },
-      { text: 'Current Stock', path: '/current-stock', icon: <InventoryIcon /> },
-      { text: 'Purchase Validation', path: '/purchase-validation', icon: <ShippingIcon /> },
-      { text: 'Delivery Sectors', path: '/delivery-sectors', icon: <ShippingIcon /> },
-      { text: 'Delivery Settlements', path: '/delivery-settlements', icon: <ShippingIcon /> },
+      {
+        text: 'Parties',
+        icon: <PeopleIcon sx={{ fontSize: 18 }} />,
+        subItems: [
+          { text: 'Customers', path: '/customers' },
+          { text: 'GST Customers', path: '/gst-customers' },
+          { text: 'Purchase Suppliers', path: '/purchase-gst-suppliers' },
+        ],
+      },
     ],
   },
   {
-    group: 'QUOTATION & REPORTS',
+    group: 'Inventory & Logistics',
     items: [
-      { text: 'Order Quotation', path: '/order-quotation', icon: <CalculateIcon /> },
-      { text: 'Reports', path: '/reports', icon: <AssessmentIcon /> },
-      { text: 'Sales Analysis', path: '/analysis', icon: <AssessmentIcon /> },
+      {
+        text: 'Products & Stock',
+        icon: <CategoryIcon sx={{ fontSize: 18 }} />,
+        subItems: [
+          { text: 'Products Catalog', path: '/products' },
+          { text: 'GST Products', path: '/gst-products' },
+          { text: 'Current Stock', path: '/current-stock' },
+        ],
+      },
+      {
+        text: 'Logistics',
+        icon: <ShippingIcon sx={{ fontSize: 18 }} />,
+        subItems: [
+          { text: 'Purchase Validation', path: '/purchase-validation' },
+          { text: 'Delivery Sectors', path: '/delivery-sectors' },
+          { text: 'Delivery Settlements', path: '/delivery-settlements' },
+        ],
+      },
     ],
   },
   {
-    group: 'SYSTEM & TOOLS',
+    group: 'Quotations & Reports',
     items: [
-      { text: 'Envelopes', path: '/envelope', icon: <MailIcon /> },
-      { text: 'Backups', path: '/backups', icon: <BackupIcon /> },
-      { text: 'Settings', path: '/settings', icon: <SettingsIcon /> },
+      { text: 'Order Quotation', path: '/order-quotation', icon: <CalculateIcon sx={{ fontSize: 18 }} /> },
+      {
+        text: 'Reports & Analytics',
+        icon: <AssessmentIcon sx={{ fontSize: 18 }} />,
+        subItems: [
+          { text: 'Reports', path: '/reports' },
+          { text: 'Sales Analysis', path: '/analysis' },
+        ],
+      },
+    ],
+  },
+  {
+    group: 'System & Tools',
+    items: [
+      { text: 'Envelopes', path: '/envelope', icon: <MailIcon sx={{ fontSize: 18 }} /> },
+      { text: 'Backups', path: '/backups', icon: <BackupIcon sx={{ fontSize: 18 }} /> },
+      { text: 'Settings', path: '/settings', icon: <SettingsIcon sx={{ fontSize: 18 }} /> },
     ],
   },
 ];
 
-export const allNavItems = navGroups.flatMap((g) => g.items);
+// Flat items for mobile drawer box tiles & lookup
+const allNavItems = navGroups.flatMap((g) =>
+  g.items.flatMap((item) =>
+    item.subItems
+      ? item.subItems.map((sub) => ({
+          ...sub,
+          icon: item.icon,
+          group: g.group,
+        }))
+      : [{ ...item, group: g.group }]
+  )
+);
 
 export default function MainLayout({ children }) {
   const theme = useTheme();
@@ -106,14 +170,56 @@ export default function MainLayout({ children }) {
 
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [openCollapsibles, setOpenCollapsibles] = useState({
+    'GST Billing': true,
+    Parties: true,
+    'Products & Stock': false,
+    Logistics: false,
+    'Reports & Analytics': false,
+  });
 
-  const currentDrawerWidth = sidebarCollapsed ? COLLAPSED_DRAWER_WIDTH : DRAWER_WIDTH;
+  const [userMenuAnchor, setUserMenuAnchor] = useState(null);
+
+  // Auto-expand collapsible parent if current route matches child
+  useEffect(() => {
+    navGroups.forEach((group) => {
+      group.items.forEach((item) => {
+        if (item.subItems) {
+          const isChildActive = item.subItems.some((sub) =>
+            location.pathname.startsWith(sub.path)
+          );
+          if (isChildActive) {
+            setOpenCollapsibles((prev) => ({ ...prev, [item.text]: true }));
+          }
+        }
+      });
+    });
+  }, [location.pathname]);
+
+  // Keyboard shortcut: Ctrl+B or Cmd+B to toggle sidebar on desktop
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'b' && !isMobile) {
+        e.preventDefault();
+        setSidebarCollapsed((prev) => !prev);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isMobile]);
 
   const handleNavClick = (path) => {
     navigate(path);
     if (mobileMenuOpen) {
       setMobileMenuOpen(false);
     }
+  };
+
+  const toggleCollapsible = (title) => {
+    setOpenCollapsibles((prev) => ({
+      ...prev,
+      [title]: !prev[title],
+    }));
   };
 
   const getBottomNavValue = () => {
@@ -124,303 +230,694 @@ export default function MainLayout({ children }) {
     return 'more';
   };
 
+  // Derive current page title for breadcrumb
+  const currentItem = allNavItems.find(
+    (item) =>
+      item.path === location.pathname ||
+      (item.path !== '/' && location.pathname.startsWith(item.path))
+  );
+
+  const currentDrawerWidth = sidebarCollapsed ? SIDEBAR_COLLAPSED_WIDTH : SIDEBAR_WIDTH;
+
   return (
     <Box sx={{ display: 'flex', minHeight: '100vh', bgcolor: '#fafafa' }}>
-      {/* Sleek Enterprise Top AppBar (shadcn/ui aesthetic) */}
-      <AppBar
-        position="fixed"
-        elevation={0}
-        sx={{
-          zIndex: (t) => t.zIndex.drawer + 1,
-          bgcolor: '#ffffff',
-          color: '#09090b',
-          borderBottom: '1px solid #e4e4e7',
-        }}
-      >
-        <Toolbar sx={{ justifyContent: 'space-between', px: { xs: 2, md: 3 } }}>
-          {/* Brand Logo & Name with Collapse Sidebar Trigger */}
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
-            <Tooltip title={isMobile ? "Menu" : (sidebarCollapsed ? "Expand Sidebar" : "Collapse Sidebar")} arrow>
-              <IconButton
-                onClick={(e) => {
-                  e.currentTarget.blur();
-                  if (isMobile) {
-                    setMobileMenuOpen(true);
-                  } else {
-                    setSidebarCollapsed(!sidebarCollapsed);
-                  }
-                }}
-                sx={{
-                  p: 0,
-                  borderRadius: '6px',
-                  transition: 'opacity 0.15s ease-in-out',
-                  '&:hover': { opacity: 0.85 },
-                }}
-              >
-                <Box
-                  sx={{
-                    width: 34,
-                    height: 34,
-                    borderRadius: '6px',
-                    bgcolor: '#18181b',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    color: '#fafafa',
-                    cursor: 'pointer',
-                  }}
-                >
-                  <InventoryIcon sx={{ fontSize: 18 }} />
-                </Box>
-              </IconButton>
-            </Tooltip>
-            <Box
-              onClick={() => {
-                if (!isMobile) setSidebarCollapsed(!sidebarCollapsed);
-              }}
-              sx={{ cursor: isMobile ? 'default' : 'pointer', userSelect: 'none' }}
-            >
-              <Typography
-                variant="subtitle1"
-                component="div"
-                sx={{
-                  fontWeight: 700,
-                  letterSpacing: '-0.02em',
-                  color: '#09090b',
-                  lineHeight: 1.1,
-                  fontSize: '0.95rem',
-                }}
-              >
-                ELBAT
-              </Typography>
-              <Typography
-                variant="caption"
-                sx={{
-                  color: '#71717a',
-                  fontSize: '0.7rem',
-                  fontWeight: 500,
-                  letterSpacing: '0.01em',
-                }}
-              >
-                Stone & Marble ERP
-              </Typography>
-            </Box>
-          </Box>
-
-          {/* Status Indicators & Profile Actions */}
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.25 }}>
-            {/* Live API status indicator */}
-            <Box
-              sx={{
-                display: { xs: 'none', sm: 'flex' },
-                alignItems: 'center',
-                gap: 0.75,
-                bgcolor: '#f4f4f5',
-                px: 1.25,
-                py: 0.4,
-                borderRadius: '6px',
-                border: '1px solid #e4e4e7',
-              }}
-            >
-              <CircleIcon sx={{ fontSize: 7, color: '#16a34a' }} />
-              <Typography sx={{ color: '#71717a', fontSize: '0.75rem', fontWeight: 500 }}>
-                API Online
-              </Typography>
-            </Box>
-
-            {/* Active Branch Badge */}
-            <Chip
-              label="dev"
-              size="small"
-              sx={{
-                height: 24,
-                fontSize: '0.7rem',
-                fontWeight: 600,
-                bgcolor: '#f4f4f5',
-                color: '#71717a',
-                border: '1px solid #e4e4e7',
-                borderRadius: '6px',
-              }}
-            />
-
-            {/* User Details */}
-            {user && (
-              <Box
-                sx={{
-                  display: { xs: 'none', md: 'flex' },
-                  alignItems: 'center',
-                  gap: 0.75,
-                  px: 1.25,
-                  py: 0.4,
-                  borderRadius: '6px',
-                  bgcolor: '#f4f4f5',
-                  border: '1px solid #e4e4e7',
-                }}
-              >
-                <PeopleIcon sx={{ fontSize: 15, color: '#71717a' }} />
-                <Typography variant="body2" sx={{ color: '#18181b', fontWeight: 500, fontSize: '0.78rem' }}>
-                  {user.username || 'Admin'}
-                </Typography>
-              </Box>
-            )}
-
-            {/* Logout Action */}
-            <IconButton
-              onClick={logout}
-              title="Logout"
-              size="small"
-              sx={{
-                color: '#71717a',
-                borderRadius: '6px',
-                p: 0.75,
-                '&:hover': { color: '#09090b', bgcolor: '#f4f4f5' },
-              }}
-            >
-              <LogoutIcon sx={{ fontSize: 18 }} />
-            </IconButton>
-          </Box>
-        </Toolbar>
-      </AppBar>
-
-      {/* Desktop Sidebar (Medium and larger screens) */}
+      {/* ======================================================== */}
+      {/* 1. DESKTOP SHADCN/UI SIDEBAR (Large screens only)       */}
+      {/* ======================================================== */}
       {!isMobile && (
-        <Drawer
-          variant="permanent"
+        <Box
+          component="aside"
           sx={{
             width: currentDrawerWidth,
-            flexShrink: 0,
-            transition: 'width 0.2s ease-in-out',
-            [`& .MuiDrawer-paper`]: {
-              width: currentDrawerWidth,
-              boxSizing: 'border-box',
-              bgcolor: '#ffffff',
-              borderRight: '1px solid #e4e4e7',
-              transition: 'width 0.2s ease-in-out',
-              overflowX: 'hidden',
-            },
+            height: '100vh',
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            bgcolor: '#09090b',
+            color: '#fafafa',
+            borderRight: '1px solid #27272a',
+            display: 'flex',
+            flexDirection: 'column',
+            zIndex: 1200,
+            transition: 'width 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
+            overflow: 'hidden',
+            userSelect: 'none',
           }}
         >
-          <Toolbar />
-          <Box sx={{ overflowY: 'auto', px: sidebarCollapsed ? 1 : 1.5, py: 2, transition: 'padding 0.2s' }}>
+          {/* Workspace / Org Switcher Header */}
+          <Box
+            sx={{
+              height: 52,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: sidebarCollapsed ? 'center' : 'space-between',
+              px: sidebarCollapsed ? 1 : 1.75,
+              borderBottom: '1px solid #27272a',
+              cursor: 'pointer',
+              transition: 'all 0.15s ease',
+              '&:hover': { bgcolor: '#18181b' },
+            }}
+            onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
+            title={sidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+          >
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.25, minWidth: 0 }}>
+              <Box
+                sx={{
+                  width: 32,
+                  height: 32,
+                  borderRadius: '8px',
+                  bgcolor: '#18181b',
+                  border: '1px solid #27272a',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  color: '#fafafa',
+                  flexShrink: 0,
+                }}
+              >
+                <InventoryIcon sx={{ fontSize: 17, color: '#38bdf8' }} />
+              </Box>
+              {!sidebarCollapsed && (
+                <Box sx={{ minWidth: 0, overflow: 'hidden' }}>
+                  <Typography
+                    sx={{
+                      fontWeight: 700,
+                      fontSize: '0.875rem',
+                      color: '#fafafa',
+                      lineHeight: 1.2,
+                      letterSpacing: '-0.01em',
+                      whiteSpace: 'nowrap',
+                      textOverflow: 'ellipsis',
+                      overflow: 'hidden',
+                    }}
+                  >
+                    ELBAT
+                  </Typography>
+                  <Typography
+                    sx={{
+                      fontSize: '0.7rem',
+                      color: '#71717a',
+                      lineHeight: 1.2,
+                      whiteSpace: 'nowrap',
+                      textOverflow: 'ellipsis',
+                      overflow: 'hidden',
+                    }}
+                  >
+                    Stone & Marble ERP
+                  </Typography>
+                </Box>
+              )}
+            </Box>
+            {!sidebarCollapsed && (
+              <UnfoldMoreIcon sx={{ fontSize: 16, color: '#71717a', flexShrink: 0 }} />
+            )}
+          </Box>
+
+          {/* Nav Items Section (Scrollable) */}
+          <Box
+            sx={{
+              flex: 1,
+              overflowY: 'auto',
+              overflowX: 'hidden',
+              py: 1.5,
+              px: sidebarCollapsed ? 0.75 : 1.25,
+              '&::-webkit-scrollbar': { width: '4px' },
+              '&::-webkit-scrollbar-thumb': {
+                bgcolor: '#27272a',
+                borderRadius: '4px',
+              },
+            }}
+          >
             {navGroups.map((group, groupIdx) => (
-              <Box key={group.group} sx={{ mb: groupIdx === navGroups.length - 1 ? 0 : (sidebarCollapsed ? 1.5 : 2) }}>
+              <Box key={group.group} sx={{ mb: 1.5 }}>
+                {/* Group Label */}
                 {!sidebarCollapsed ? (
                   <Typography
                     sx={{
-                      px: 1.25,
-                      mb: 0.5,
                       fontSize: '0.68rem',
                       fontWeight: 600,
-                      color: '#a1a1aa',
-                      letterSpacing: '0.06em',
+                      color: '#71717a',
                       textTransform: 'uppercase',
+                      letterSpacing: '0.06em',
+                      px: 1,
+                      py: 0.5,
                       whiteSpace: 'nowrap',
                     }}
                   >
                     {group.group}
                   </Typography>
                 ) : (
-                  groupIdx > 0 && <Divider sx={{ my: 1, borderColor: '#f4f4f5' }} />
+                  groupIdx > 0 && <Divider sx={{ my: 1, borderColor: '#27272a' }} />
                 )}
-                <List dense disablePadding>
-                  {group.items.map((item) => {
-                    const selected =
-                      item.path === '/'
-                        ? location.pathname === '/'
-                        : location.pathname.startsWith(item.path);
 
-                    const buttonContent = (
-                      <ListItemButton
-                        selected={selected}
+                {/* Items */}
+                <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.25 }}>
+                  {group.items.map((item) => {
+                    const hasSub = Boolean(item.subItems);
+                    const isOpen = openCollapsibles[item.text];
+                    const isAnyChildActive =
+                      hasSub &&
+                      item.subItems.some((sub) => location.pathname.startsWith(sub.path));
+                    const isDirectActive =
+                      !hasSub &&
+                      (item.path === '/'
+                        ? location.pathname === '/'
+                        : location.pathname.startsWith(item.path));
+
+                    if (sidebarCollapsed) {
+                      // Collapsed Rail View: Icons only with Tooltip
+                      return (
+                        <Tooltip
+                          key={item.text}
+                          title={item.text}
+                          placement="right"
+                          arrow
+                        >
+                          <Box
+                            onClick={() => {
+                              if (hasSub) {
+                                handleNavClick(item.subItems[0].path);
+                              } else {
+                                handleNavClick(item.path);
+                              }
+                            }}
+                            sx={{
+                              width: 44,
+                              height: 38,
+                              mx: 'auto',
+                              borderRadius: '6px',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              cursor: 'pointer',
+                              color: isDirectActive || isAnyChildActive ? '#fafafa' : '#a1a1aa',
+                              bgcolor:
+                                isDirectActive || isAnyChildActive ? '#27272a' : 'transparent',
+                              transition: 'all 0.12s ease',
+                              '&:hover': {
+                                bgcolor: isDirectActive || isAnyChildActive ? '#27272a' : '#18181b',
+                                color: '#fafafa',
+                              },
+                            }}
+                          >
+                            {item.icon}
+                          </Box>
+                        </Tooltip>
+                      );
+                    }
+
+                    // Expanded View: Full shadcn Collapsible Tree Item
+                    if (hasSub) {
+                      return (
+                        <Box key={item.text} sx={{ mb: 0.25 }}>
+                          {/* Parent Button */}
+                          <Box
+                            onClick={() => toggleCollapsible(item.text)}
+                            sx={{
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'space-between',
+                              px: 1.25,
+                              py: 0.75,
+                              borderRadius: '6px',
+                              cursor: 'pointer',
+                              color: isAnyChildActive ? '#fafafa' : '#d4d4d8',
+                              fontWeight: isAnyChildActive ? 600 : 500,
+                              fontSize: '0.82rem',
+                              transition: 'all 0.12s ease',
+                              '&:hover': {
+                                bgcolor: '#18181b',
+                                color: '#fafafa',
+                              },
+                            }}
+                          >
+                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.25 }}>
+                              <Box sx={{ display: 'flex', color: isAnyChildActive ? '#fafafa' : '#a1a1aa' }}>
+                                {item.icon}
+                              </Box>
+                              <Typography sx={{ fontSize: '0.82rem', fontWeight: 'inherit', color: 'inherit' }}>
+                                {item.text}
+                              </Typography>
+                            </Box>
+                            <ChevronRightIcon
+                              sx={{
+                                fontSize: 16,
+                                color: '#71717a',
+                                transform: isOpen ? 'rotate(90deg)' : 'none',
+                                transition: 'transform 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
+                              }}
+                            />
+                          </Box>
+
+                          {/* Subitems Tree with Guide Line */}
+                          {isOpen && (
+                            <Box
+                              sx={{
+                                ml: '19px',
+                                pl: 1.25,
+                                mt: 0.25,
+                                borderLeft: '1px solid #27272a',
+                                display: 'flex',
+                                flexDirection: 'column',
+                                gap: 0.25,
+                              }}
+                            >
+                              {item.subItems.map((sub) => {
+                                const isSubActive =
+                                  sub.path === '/'
+                                    ? location.pathname === '/'
+                                    : location.pathname.startsWith(sub.path);
+                                return (
+                                  <Box
+                                    key={sub.path}
+                                    onClick={() => handleNavClick(sub.path)}
+                                    sx={{
+                                      px: 1,
+                                      py: 0.6,
+                                      borderRadius: '6px',
+                                      fontSize: '0.8rem',
+                                      fontWeight: isSubActive ? 600 : 400,
+                                      color: isSubActive ? '#fafafa' : '#a1a1aa',
+                                      bgcolor: isSubActive ? '#27272a' : 'transparent',
+                                      cursor: 'pointer',
+                                      transition: 'all 0.12s ease',
+                                      '&:hover': {
+                                        bgcolor: isSubActive ? '#27272a' : '#18181b',
+                                        color: '#fafafa',
+                                      },
+                                    }}
+                                  >
+                                    {sub.text}
+                                  </Box>
+                                );
+                              })}
+                            </Box>
+                          )}
+                        </Box>
+                      );
+                    }
+
+                    // Direct Nav Link
+                    return (
+                      <Box
+                        key={item.text}
                         onClick={() => handleNavClick(item.path)}
                         sx={{
-                          borderRadius: '6px',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: 1.25,
+                          px: 1.25,
                           py: 0.75,
-                          px: sidebarCollapsed ? 1 : 1.25,
-                          justifyContent: sidebarCollapsed ? 'center' : 'initial',
-                          transition: 'all 0.12s ease-in-out',
-                          '&.Mui-selected': {
-                            backgroundColor: '#f4f4f5',
-                            color: '#18181b',
-                            '& .MuiListItemIcon-root': { color: '#18181b' },
-                            '&:hover': {
-                              backgroundColor: '#e4e4e7',
-                            },
-                          },
-                          '&:not(.Mui-selected):hover': {
-                            bgcolor: '#fafafa',
-                            color: '#09090b',
-                            '& .MuiListItemIcon-root': { color: '#09090b' },
+                          borderRadius: '6px',
+                          cursor: 'pointer',
+                          color: isDirectActive ? '#fafafa' : '#d4d4d8',
+                          bgcolor: isDirectActive ? '#27272a' : 'transparent',
+                          fontWeight: isDirectActive ? 600 : 500,
+                          fontSize: '0.82rem',
+                          transition: 'all 0.12s ease',
+                          '&:hover': {
+                            bgcolor: isDirectActive ? '#27272a' : '#18181b',
+                            color: '#fafafa',
                           },
                         }}
                       >
-                        <ListItemIcon
-                          sx={{
-                            minWidth: sidebarCollapsed ? 'auto' : 30,
-                            justifyContent: 'center',
-                            color: selected ? '#18181b' : '#71717a',
-                            '& svg': { fontSize: 18 },
-                          }}
-                        >
+                        <Box sx={{ display: 'flex', color: isDirectActive ? '#fafafa' : '#a1a1aa' }}>
                           {item.icon}
-                        </ListItemIcon>
-                        {!sidebarCollapsed && (
-                          <ListItemText
-                            primary={
-                              <Typography
-                                sx={{
-                                  fontSize: '0.8125rem',
-                                  fontWeight: selected ? 600 : 500,
-                                  color: selected ? '#18181b' : '#52525b',
-                                  whiteSpace: 'nowrap',
-                                }}
-                              >
-                                {item.text}
-                              </Typography>
-                            }
-                          />
-                        )}
-                      </ListItemButton>
-                    );
-
-                    return (
-                      <ListItem key={item.text} disablePadding sx={{ mb: 0.25 }}>
-                        {sidebarCollapsed ? (
-                          <Tooltip title={item.text} placement="right" arrow>
-                            {buttonContent}
-                          </Tooltip>
-                        ) : (
-                          buttonContent
-                        )}
-                      </ListItem>
+                        </Box>
+                        <Typography sx={{ fontSize: '0.82rem', fontWeight: 'inherit', color: 'inherit' }}>
+                          {item.text}
+                        </Typography>
+                      </Box>
                     );
                   })}
-                </List>
+                </Box>
               </Box>
             ))}
           </Box>
-        </Drawer>
+
+          {/* User Profile Card Footer */}
+          <Box
+            sx={{
+              borderTop: '1px solid #27272a',
+              p: sidebarCollapsed ? 0.75 : 1,
+              bgcolor: '#09090b',
+            }}
+          >
+            <Box
+              onClick={(e) => setUserMenuAnchor(e.currentTarget)}
+              sx={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: sidebarCollapsed ? 'center' : 'space-between',
+                p: sidebarCollapsed ? 0.5 : 1,
+                borderRadius: '8px',
+                cursor: 'pointer',
+                transition: 'all 0.15s ease',
+                '&:hover': { bgcolor: '#18181b' },
+              }}
+              title="User account"
+            >
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.25, minWidth: 0 }}>
+                <Avatar
+                  sx={{
+                    width: 32,
+                    height: 32,
+                    bgcolor: '#27272a',
+                    color: '#fafafa',
+                    fontSize: '0.85rem',
+                    fontWeight: 700,
+                    border: '1px solid #3f3f46',
+                  }}
+                >
+                  {user?.username?.charAt(0)?.toUpperCase() || 'A'}
+                </Avatar>
+                {!sidebarCollapsed && (
+                  <Box sx={{ minWidth: 0, overflow: 'hidden' }}>
+                    <Typography
+                      sx={{
+                        fontWeight: 600,
+                        fontSize: '0.82rem',
+                        color: '#fafafa',
+                        lineHeight: 1.2,
+                        whiteSpace: 'nowrap',
+                        textOverflow: 'ellipsis',
+                        overflow: 'hidden',
+                      }}
+                    >
+                      {user?.username || 'Admin'}
+                    </Typography>
+                    <Typography
+                      sx={{
+                        fontSize: '0.7rem',
+                        color: '#71717a',
+                        lineHeight: 1.2,
+                        whiteSpace: 'nowrap',
+                        textOverflow: 'ellipsis',
+                        overflow: 'hidden',
+                      }}
+                    >
+                      {user?.email || 'admin@elbat.com'}
+                    </Typography>
+                  </Box>
+                )}
+              </Box>
+              {!sidebarCollapsed && (
+                <UnfoldMoreIcon sx={{ fontSize: 16, color: '#71717a', flexShrink: 0 }} />
+              )}
+            </Box>
+
+            {/* Profile Dropdown Menu */}
+            <Menu
+              anchorEl={userMenuAnchor}
+              open={Boolean(userMenuAnchor)}
+              onClose={() => setUserMenuAnchor(null)}
+              anchorOrigin={{ vertical: 'top', horizontal: 'right' }}
+              transformOrigin={{ vertical: 'bottom', horizontal: 'left' }}
+              slotProps={{
+                paper: {
+                  sx: {
+                    bgcolor: '#18181b',
+                    color: '#fafafa',
+                    border: '1px solid #27272a',
+                    borderRadius: '8px',
+                    boxShadow: '0 10px 15px -3px rgba(0,0,0,0.3)',
+                    minWidth: 190,
+                    p: 0.5,
+                  },
+                },
+              }}
+            >
+              <Box sx={{ px: 1.5, py: 1, borderBottom: '1px solid #27272a', mb: 0.5 }}>
+                <Typography sx={{ fontSize: '0.82rem', fontWeight: 600, color: '#fafafa' }}>
+                  {user?.username || 'Admin'}
+                </Typography>
+                <Typography sx={{ fontSize: '0.72rem', color: '#71717a' }}>
+                  {user?.role || 'Super Admin'}
+                </Typography>
+              </Box>
+              <MenuItem
+                onClick={() => {
+                  setUserMenuAnchor(null);
+                  navigate('/settings');
+                }}
+                sx={{
+                  borderRadius: '6px',
+                  fontSize: '0.82rem',
+                  color: '#d4d4d8',
+                  '&:hover': { bgcolor: '#27272a', color: '#fafafa' },
+                }}
+              >
+                <ListItemIcon sx={{ color: '#a1a1aa', minWidth: 28 }}>
+                  <SettingsIcon sx={{ fontSize: 16 }} />
+                </ListItemIcon>
+                <ListItemText primary="Settings" primaryTypographyProps={{ fontSize: '0.82rem' }} />
+              </MenuItem>
+              <MenuItem
+                onClick={() => {
+                  setUserMenuAnchor(null);
+                  logout();
+                }}
+                sx={{
+                  borderRadius: '6px',
+                  fontSize: '0.82rem',
+                  color: '#ef4444',
+                  '&:hover': { bgcolor: '#27272a', color: '#ef4444' },
+                }}
+              >
+                <ListItemIcon sx={{ color: '#ef4444', minWidth: 28 }}>
+                  <LogoutIcon sx={{ fontSize: 16 }} />
+                </ListItemIcon>
+                <ListItemText primary="Log out" primaryTypographyProps={{ fontSize: '0.82rem' }} />
+              </MenuItem>
+            </Menu>
+          </Box>
+        </Box>
       )}
 
-      {/* Main Content Area */}
+      {/* ======================================================== */}
+      {/* 2. MOBILE TOPBAR (Small & Medium screens only)          */}
+      {/* ======================================================== */}
+      {isMobile && (
+        <Box
+          sx={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            height: 56,
+            bgcolor: '#ffffff',
+            borderBottom: '1px solid #e4e4e7',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            px: 2,
+            zIndex: 1100,
+          }}
+        >
+          <Box
+            onClick={() => setMobileMenuOpen(true)}
+            sx={{ display: 'flex', alignItems: 'center', gap: 1.25, cursor: 'pointer' }}
+          >
+            <Box
+              sx={{
+                width: 32,
+                height: 32,
+                borderRadius: '6px',
+                bgcolor: '#18181b',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                color: '#fafafa',
+              }}
+            >
+              <InventoryIcon sx={{ fontSize: 17 }} />
+            </Box>
+            <Box>
+              <Typography sx={{ fontWeight: 700, fontSize: '0.9rem', color: '#09090b', lineHeight: 1.1 }}>
+                ELBAT
+              </Typography>
+              <Typography sx={{ fontSize: '0.68rem', color: '#71717a' }}>
+                Stone & Marble ERP
+              </Typography>
+            </Box>
+          </Box>
+
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+            <Chip
+              label="dev"
+              size="small"
+              sx={{
+                height: 22,
+                fontSize: '0.68rem',
+                fontWeight: 600,
+                bgcolor: '#f4f4f5',
+                color: '#71717a',
+                border: '1px solid #e4e4e7',
+                borderRadius: '4px',
+              }}
+            />
+            <IconButton
+              onClick={logout}
+              size="small"
+              sx={{ color: '#71717a', p: 0.5 }}
+              title="Logout"
+            >
+              <LogoutIcon sx={{ fontSize: 18 }} />
+            </IconButton>
+          </Box>
+        </Box>
+      )}
+
+      {/* ======================================================== */}
+      {/* 3. MAIN CONTENT INSET AREA                              */}
+      {/* ======================================================== */}
       <Box
-        component="main"
         sx={{
           flexGrow: 1,
-          p: { xs: 2, sm: 3, md: 3.5 },
-          width: { md: `calc(100% - ${currentDrawerWidth}px)` },
-          transition: 'width 0.2s ease-in-out',
-          mt: '64px',
-          mb: isMobile ? '68px' : 0,
-          overflowX: 'hidden',
+          display: 'flex',
+          flexDirection: 'column',
+          minWidth: 0,
+          ml: { xs: 0, md: `${currentDrawerWidth}px` },
+          transition: 'margin-left 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
+          minHeight: '100vh',
           bgcolor: '#fafafa',
-          minHeight: 'calc(100vh - 64px)',
         }}
       >
-        {children}
+        {/* Desktop Header bar (Contains shadcn [ | ] toggle button ONLY on large screen) */}
+        {!isMobile && (
+          <Box
+            component="header"
+            sx={{
+              height: 52,
+              position: 'sticky',
+              top: 0,
+              bgcolor: '#ffffff',
+              borderBottom: '1px solid #e4e4e7',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              px: 2.5,
+              zIndex: 100,
+            }}
+          >
+            {/* Left: shadcn SidebarTrigger toggle button + Breadcrumb */}
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+              {/* Toggle button ONLY for large screen */}
+              <Tooltip
+                title={sidebarCollapsed ? 'Expand sidebar (Ctrl+B)' : 'Collapse sidebar (Ctrl+B)'}
+                arrow
+              >
+                <IconButton
+                  onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
+                  size="small"
+                  sx={{
+                    width: 32,
+                    height: 32,
+                    borderRadius: '6px',
+                    border: '1px solid #e4e4e7',
+                    bgcolor: '#ffffff',
+                    color: '#09090b',
+                    p: 0,
+                    transition: 'all 0.15s ease',
+                    '&:hover': {
+                      bgcolor: '#f4f4f5',
+                      borderColor: '#d4d4d8',
+                    },
+                  }}
+                >
+                  <SidebarLeftIcon />
+                </IconButton>
+              </Tooltip>
+
+              <Divider orientation="vertical" flexItem sx={{ mx: 1, my: 1.25, borderColor: '#e4e4e7' }} />
+
+              {/* Breadcrumb / Section Header */}
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75 }}>
+                <Typography sx={{ fontSize: '0.82rem', color: '#71717a' }}>
+                  {currentItem?.group || 'Application'}
+                </Typography>
+                <Typography sx={{ fontSize: '0.82rem', color: '#a1a1aa' }}>/</Typography>
+                <Typography sx={{ fontSize: '0.82rem', fontWeight: 600, color: '#09090b' }}>
+                  {currentItem?.text || 'Dashboard'}
+                </Typography>
+              </Box>
+            </Box>
+
+            {/* Right: API status & Active Branch */}
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.25 }}>
+              <Box
+                sx={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 0.75,
+                  bgcolor: '#f4f4f5',
+                  px: 1.25,
+                  py: 0.4,
+                  borderRadius: '6px',
+                  border: '1px solid #e4e4e7',
+                }}
+              >
+                <CircleIcon sx={{ fontSize: 7, color: '#16a34a' }} />
+                <Typography sx={{ color: '#71717a', fontSize: '0.75rem', fontWeight: 500 }}>
+                  API Online
+                </Typography>
+              </Box>
+
+              <Chip
+                label="dev"
+                size="small"
+                sx={{
+                  height: 24,
+                  fontSize: '0.7rem',
+                  fontWeight: 600,
+                  bgcolor: '#f4f4f5',
+                  color: '#71717a',
+                  border: '1px solid #e4e4e7',
+                  borderRadius: '6px',
+                }}
+              />
+
+              {user && (
+                <Box
+                  sx={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 0.75,
+                    px: 1.25,
+                    py: 0.4,
+                    borderRadius: '6px',
+                    bgcolor: '#f4f4f5',
+                    border: '1px solid #e4e4e7',
+                  }}
+                >
+                  <Typography variant="body2" sx={{ color: '#18181b', fontWeight: 500, fontSize: '0.78rem' }}>
+                    {user.username || 'Admin'}
+                  </Typography>
+                </Box>
+              )}
+            </Box>
+          </Box>
+        )}
+
+        {/* Content Body */}
+        <Box
+          component="main"
+          sx={{
+            flexGrow: 1,
+            p: { xs: 2, sm: 3, md: 3.5 },
+            mt: isMobile ? '56px' : 0,
+            mb: isMobile ? '68px' : 0,
+            bgcolor: '#fafafa',
+            minWidth: 0,
+          }}
+        >
+          {children}
+        </Box>
       </Box>
 
-      {/* Mobile Fixed Bottom Navigation */}
+      {/* ======================================================== */}
+      {/* 4. MOBILE BOTTOM NAVIGATION (Small & Medium screens only) */}
+      {/* ======================================================== */}
       {isMobile && (
         <Paper
           elevation={0}
@@ -429,7 +926,7 @@ export default function MainLayout({ children }) {
             bottom: 0,
             left: 0,
             right: 0,
-            zIndex: (t) => t.zIndex.appBar,
+            zIndex: 1100,
             borderTop: '1px solid #e4e4e7',
             bgcolor: '#ffffff',
           }}
@@ -466,7 +963,9 @@ export default function MainLayout({ children }) {
         </Paper>
       )}
 
-      {/* Mobile Menu Drawer (Small devices: box-type tiles with rounded-corner borders) */}
+      {/* ======================================================== */}
+      {/* 5. MOBILE MENU DRAWER (Box-type tiles with rounded-corners) */}
+      {/* ======================================================== */}
       <SwipeableDrawer
         anchor="bottom"
         open={mobileMenuOpen}
@@ -596,4 +1095,3 @@ export default function MainLayout({ children }) {
     </Box>
   );
 }
-

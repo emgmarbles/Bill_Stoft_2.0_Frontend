@@ -418,10 +418,14 @@ export default function GSTInvoiceFormDialog({
         </div>
       }
       visible={visible}
+      modal
+      position="center"
       style={{ width: '1000px', maxWidth: '96vw' }}
+      breakpoints={{ '960px': '92vw', '640px': '98vw' }}
       footer={dialogFooter}
       onHide={onHide}
       className="gst-invoice-form-dialog"
+      appendTo={typeof document !== 'undefined' ? document.body : undefined}
     >
       {errorMsg && (
         <div

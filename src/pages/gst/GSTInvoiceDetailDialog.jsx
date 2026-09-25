@@ -89,10 +89,14 @@ export default function GSTInvoiceDetailDialog({ visible, invoice, onHide, onEdi
         </div>
       }
       visible={visible}
+      modal
+      position="center"
       style={{ width: '900px', maxWidth: '96vw' }}
+      breakpoints={{ '960px': '92vw', '640px': '98vw' }}
       footer={footerContent}
       onHide={onHide}
       className="gst-invoice-detail-dialog"
+      appendTo={typeof document !== 'undefined' ? document.body : undefined}
     >
       <div style={{ padding: '8px 4px' }}>
         {/* Top Information Grid */}

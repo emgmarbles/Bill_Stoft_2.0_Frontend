@@ -350,8 +350,11 @@ export default function GSTCustomersPage() {
       <Dialog
         header={selectedCustomer ? `Edit Customer: ${selectedCustomer.name}` : 'Add New GST Customer'}
         visible={dialogVisible}
-        style={{ width: '520px' }}
+        style={{ width: '520px', maxWidth: '96vw' }}
+        breakpoints={{ '960px': '90vw', '640px': '98vw' }}
+        position="center"
         modal
+        appendTo={typeof document !== 'undefined' ? document.body : undefined}
         footer={dialogFooter}
         onHide={() => setDialogVisible(false)}
       >
@@ -417,8 +420,11 @@ export default function GSTCustomersPage() {
       <Dialog
         header="Confirm Customer Deletion"
         visible={deleteDialogVisible}
-        style={{ width: '420px' }}
+        style={{ width: '420px', maxWidth: '96vw' }}
+        breakpoints={{ '960px': '90vw', '640px': '98vw' }}
+        position="center"
         modal
+        appendTo={typeof document !== 'undefined' ? document.body : undefined}
         onHide={() => setDeleteDialogVisible(false)}
         footer={
           <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px' }}>
