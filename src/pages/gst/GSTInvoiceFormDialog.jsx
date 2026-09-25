@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Dialog } from 'primereact/dialog';
 import { Button } from 'primereact/button';
 import { InputText } from 'primereact/inputtext';
@@ -30,6 +30,131 @@ const PAYMENT_METHOD_OPTIONS = [
   { label: 'Cash', value: 'cash' },
 ];
 
+const round2 = (num) => Math.round((Number(num) || 0) * 100) / 100;
+
+/**
+ * Replicate exact reverse calculation from legacy reference:
+ * - Net Amount = Grand Total / (1 + GST% / 100)
+ * - Single row:
+ *     Total = Net Amount (frozen)
+ *     Sqft = Net Amount / Price (frozen)
+ * - Multiple rows (N >= 2):
+ *     Rows 0 to N-2: Price and Total editable by user, Sqft = Total / Price (frozen)
+ *     Last row (N-1): Absorbs remainder: Net Amount - sum(totals of rows 0..N-2)
+ *                     Last Total (frozen), Last Sqft = Last Total / Last Price (frozen)
+ */
+function calculateDistribution(currentItems, grandTotalVal, rate) {
+  const gt = parseFloat(grandTotalVal) || 0;
+  const gstPercent = parseFloat(rate) || 0;
+  const rowCount = currentItems.length;
+
+  if (rowCount === 0) {
+    return {
+      newItems: [],
+      netAmount: 0,
+      gstAmount: 0,
+      calculatedGrandTotal: 0,
+      error: '',
+    };
+  }
+
+  let prelimNetAmount = gt;
+  if (gstPercent > 0 && gt > 0) {
+    prelimNetAmount = round2(gt / (1 + gstPercent / 100));
+  }
+
+  const updatedItems = currentItems.map((item) => ({ ...item }));
+
+  if (rowCount === 1) {
+    const price = parseFloat(updatedItems[0].price) || 1;
+    if (gt > 0 && price > 0) {
+      const sqft = round2(prelimNetAmount / price);
+      const productTotal = round2(sqft * price);
+      updatedItems[0].quantity = sqft;
+      updatedItems[0].total = productTotal;
+
+      const gst = round2((productTotal * gstPercent) / 100);
+      const finalGrandTotal = round2(productTotal + gst);
+      return {
+        newItems: updatedItems,
+        netAmount: productTotal,
+        gstAmount: gst,
+        calculatedGrandTotal: finalGrandTotal,
+        error: '',
+      };
+    } else {
+      updatedItems[0].quantity = 0;
+      updatedItems[0].total = 0;
+      return {
+        newItems: updatedItems,
+        netAmount: 0,
+        gstAmount: 0,
+        calculatedGrandTotal: 0,
+        error: '',
+      };
+    }
+  }
+
+  // rowCount >= 2
+  let sumOthers = 0;
+  for (let i = 0; i < rowCount - 1; i++) {
+    const price = parseFloat(updatedItems[i].price) || 1;
+    const enteredTotal = parseFloat(updatedItems[i].total) || 0;
+    if (enteredTotal > 0 && price > 0) {
+      const sqft = round2(enteredTotal / price);
+      const productTotal = round2(sqft * price);
+      updatedItems[i].quantity = sqft;
+      updatedItems[i].total = productTotal;
+      sumOthers += productTotal;
+    } else {
+      updatedItems[i].quantity = 0;
+      updatedItems[i].total = enteredTotal;
+    }
+  }
+
+  sumOthers = round2(sumOthers);
+
+  const lastIndex = rowCount - 1;
+  const lastPrice = parseFloat(updatedItems[lastIndex].price) || 1;
+  const remaining = round2(prelimNetAmount - sumOthers);
+
+  let validationError = '';
+  if (sumOthers > prelimNetAmount + 0.01) {
+    validationError = `Don't enter more than total-amount (actual amount: ₹${prelimNetAmount.toFixed(2)})`;
+  }
+
+  if (remaining > 0 && lastPrice > 0) {
+    const lastSqft = round2(remaining / lastPrice);
+    const lastProductTotal = round2(lastSqft * lastPrice);
+    updatedItems[lastIndex].quantity = lastSqft;
+    updatedItems[lastIndex].total = lastProductTotal;
+
+    const actualNetAmount = round2(sumOthers + lastProductTotal);
+    const gstAmount = round2((actualNetAmount * gstPercent) / 100);
+    const calculatedGrandTotal = round2(actualNetAmount + gstAmount);
+
+    return {
+      newItems: updatedItems,
+      netAmount: actualNetAmount,
+      gstAmount: gstAmount,
+      calculatedGrandTotal: calculatedGrandTotal,
+      error: validationError,
+    };
+  } else {
+    updatedItems[lastIndex].quantity = 0;
+    updatedItems[lastIndex].total = remaining > 0 ? remaining : 0;
+    const actualNetAmount = prelimNetAmount;
+    const gstAmount = round2((actualNetAmount * gstPercent) / 100);
+    return {
+      newItems: updatedItems,
+      netAmount: actualNetAmount,
+      gstAmount: gstAmount,
+      calculatedGrandTotal: round2(actualNetAmount + gstAmount),
+      error: validationError,
+    };
+  }
+}
+
 export default function GSTInvoiceFormDialog({
   visible,
   invoice,
@@ -45,6 +170,7 @@ export default function GSTInvoiceFormDialog({
   // Form State
   const [invoiceNo, setInvoiceNo] = useState('');
   const [invoiceDate, setInvoiceDate] = useState(new Date());
+  const [truckNo, setTruckNo] = useState('');
   const [selectedPartyId, setSelectedPartyId] = useState(null);
   const [partyName, setPartyName] = useState('');
   const [partyAddress, setPartyAddress] = useState('');
@@ -52,9 +178,15 @@ export default function GSTInvoiceFormDialog({
   const [gstRatePercent, setGstRatePercent] = useState(18);
   const [isInterstate, setIsInterstate] = useState(false);
 
+  // Amount & reverse calculation state
+  const [grandTotal, setGrandTotal] = useState('');
+  const [netAmount, setNetAmount] = useState(0);
+  const [gstAmount, setGstAmount] = useState(0);
+  const [productAmountError, setProductAmountError] = useState('');
+
   // Line items state
   const [items, setItems] = useState([
-    { product_id: null, product_name: '', price: 0, quantity: 1, amount: 0 },
+    { product_id: null, product_name: '', hsn_code: '', price: '1.00', quantity: 0, total: 0 },
   ]);
 
   // Transport details
@@ -153,35 +285,56 @@ export default function GSTInvoiceFormDialog({
     };
   }, [visible, currentType, isEdit]);
 
-  // Populate form if editing
+  // Populate form if editing or reset for new
   useEffect(() => {
     if (invoice && visible) {
       setInvoiceNo(invoice.invoice_no || '');
       setInvoiceDate(invoice.invoice_date ? new Date(invoice.invoice_date) : new Date());
+      const loadedTruckNo = invoice.truck_no || invoice.transport_detail?.truck_no || '';
+      setTruckNo(loadedTruckNo);
       setSelectedPartyId(isSale ? invoice.customer?.id || invoice.customer : invoice.supplier?.id || invoice.supplier);
       setPartyName(invoice.party_name || '');
       setPartyAddress(invoice.party_address || '');
       setPartyGstin(invoice.party_gstin || '');
-      setGstRatePercent(Number(invoice.gst_rate_percent) || 18);
+      const rate = Number(invoice.gst_rate_percent) || 18;
+      setGstRatePercent(rate);
       setIsInterstate(Number(invoice.igst_amount) > 0);
 
+      const gtVal = invoice.grand_total_amount ? Number(invoice.grand_total_amount).toFixed(2) : '';
+      setGrandTotal(gtVal);
+
       if (invoice.items && invoice.items.length > 0) {
-        setItems(
-          invoice.items.map((it) => ({
+        const loadedItems = invoice.items.map((it) => {
+          const p = round2(it.price) || 1;
+          const q = round2(it.quantity) || 0;
+          const tot = round2(it.amount) || round2(p * q);
+          return {
             product_id: it.product?.id || it.product_id || it.product,
             product_name: it.product?.name || it.product_name || '',
-            price: Number(it.price) || 0,
-            quantity: Number(it.quantity) || 0,
-            amount: Number(it.amount) || 0,
-          }))
-        );
+            hsn_code: it.product_hsn || it.product?.hsn_code || it.hsn_code || '',
+            price: p > 0 ? p.toFixed(2) : '1.00',
+            quantity: q,
+            total: tot,
+          };
+        });
+
+        // Enforce exact distribution calculation matching legacy reference
+        const dist = calculateDistribution(loadedItems, gtVal, rate);
+        setItems(dist.newItems);
+        setNetAmount(dist.netAmount);
+        setGstAmount(dist.gstAmount);
+        setProductAmountError(dist.error);
       } else {
-        setItems([{ product_id: null, product_name: '', price: 0, quantity: 1, amount: 0 }]);
+        const initial = [{ product_id: null, product_name: '', hsn_code: '', price: '1.00', quantity: 0, total: 0 }];
+        const dist = calculateDistribution(initial, gtVal, rate);
+        setItems(dist.newItems);
+        setNetAmount(dist.netAmount);
+        setGstAmount(dist.gstAmount);
       }
 
       if (invoice.transport_detail) {
         setTransport({
-          truck_no: invoice.transport_detail.truck_no || '',
+          truck_no: loadedTruckNo,
           transporter_name: invoice.transport_detail.transporter_name || '',
           driver_name: invoice.transport_detail.driver_name || '',
           driver_phone: invoice.transport_detail.driver_phone || '',
@@ -191,6 +344,18 @@ export default function GSTInvoiceFormDialog({
           advance_paid: Number(invoice.transport_detail.advance_paid) || 0,
           notes: invoice.transport_detail.notes || '',
         });
+      } else {
+        setTransport({
+          truck_no: loadedTruckNo,
+          transporter_name: '',
+          driver_name: '',
+          driver_phone: '',
+          lr_no: '',
+          lr_date: null,
+          freight_amount: 0,
+          advance_paid: 0,
+          notes: '',
+        });
       }
 
       setPaymentStatus(invoice.payment_status || 'pending');
@@ -199,15 +364,20 @@ export default function GSTInvoiceFormDialog({
       setPaymentDate(invoice.payment_date ? new Date(invoice.payment_date) : null);
       setChequeNo(invoice.cheque_no || '');
     } else if (visible && !isEdit) {
-      // Reset for new creation
+      // Reset for new invoice creation
       setInvoiceDate(new Date());
+      setTruckNo('');
       setSelectedPartyId(null);
       setPartyName('');
       setPartyAddress('');
       setPartyGstin('');
       setGstRatePercent(18);
       setIsInterstate(false);
-      setItems([{ product_id: null, product_name: '', price: 0, quantity: 1, amount: 0 }]);
+      setGrandTotal('');
+      setNetAmount(0);
+      setGstAmount(0);
+      setProductAmountError('');
+      setItems([{ product_id: null, product_name: '', hsn_code: '', price: '1.00', quantity: 0, total: 0 }]);
       setTransport({
         truck_no: '',
         transporter_name: '',
@@ -239,64 +409,142 @@ export default function GSTInvoiceFormDialog({
     }
   };
 
-  // Line item handlers
-  const handleProductChange = (index, productId) => {
-    const newItems = [...items];
-    const prod = Array.isArray(productsList) ? productsList.find((p) => p.id === productId) : null;
-    newItems[index].product_id = productId;
-    newItems[index].product_name = prod ? prod.name : '';
-    if (prod && prod.gst_rate) {
-      setGstRatePercent(prod.gst_rate);
-    }
-    setItems(newItems);
+  // Keep truck_no in sync between Bill Info and Transport Details
+  const handleTruckNoChange = (val) => {
+    const upper = val.toUpperCase();
+    setTruckNo(upper);
+    setTransport((prev) => ({ ...prev, truck_no: upper }));
   };
 
-  const handleItemFieldChange = (index, field, value) => {
-    const newItems = [...items];
-    newItems[index][field] = value;
-    const price = Number(newItems[index].price) || 0;
-    const qty = Number(newItems[index].quantity) || 0;
-    newItems[index].amount = Number((price * qty).toFixed(2));
-    setItems(newItems);
+  // Grand Total change: live calculation
+  const handleGrandTotalChange = (val) => {
+    setGrandTotal(val);
+    const dist = calculateDistribution(items, val, gstRatePercent);
+    setItems(dist.newItems);
+    setNetAmount(dist.netAmount);
+    setGstAmount(dist.gstAmount);
+    setProductAmountError(dist.error);
+  };
+
+  // Grand Total blur: format to 2 decimals
+  const handleGrandTotalBlur = () => {
+    const val = parseFloat(grandTotal) || 0;
+    if (val > 0) {
+      const dist = calculateDistribution(items, val, gstRatePercent);
+      setGrandTotal(dist.calculatedGrandTotal > 0 ? dist.calculatedGrandTotal.toFixed(2) : val.toFixed(2));
+      setItems(dist.newItems);
+      setNetAmount(dist.netAmount);
+      setGstAmount(dist.gstAmount);
+      setProductAmountError(dist.error);
+    }
+  };
+
+  // GST Rate selection change
+  const handleGstRateChange = (newRate) => {
+    setGstRatePercent(newRate);
+    const dist = calculateDistribution(items, grandTotal, newRate);
+    setItems(dist.newItems);
+    setNetAmount(dist.netAmount);
+    setGstAmount(dist.gstAmount);
+    setProductAmountError(dist.error);
+  };
+
+  // Interstate checkbox change
+  const handleInterstateChange = (checked) => {
+    setIsInterstate(checked);
+  };
+
+  // Product selection handler
+  const handleProductChange = (index, productId) => {
+    const prod = Array.isArray(productsList) ? productsList.find((p) => p.id === productId) : null;
+    let rate = gstRatePercent;
+    if (prod && prod.gst_rate) {
+      rate = prod.gst_rate;
+      setGstRatePercent(rate);
+    }
+
+    const updated = items.map((it, idx) => {
+      if (idx === index) {
+        return {
+          ...it,
+          product_id: productId,
+          product_name: prod ? prod.name : '',
+          hsn_code: prod?.hsn_code || '',
+        };
+      }
+      return it;
+    });
+
+    const dist = calculateDistribution(updated, grandTotal, rate);
+    setItems(dist.newItems);
+    setNetAmount(dist.netAmount);
+    setGstAmount(dist.gstAmount);
+    setProductAmountError(dist.error);
+  };
+
+  // Live price adjustment: updates sqft preview and recalculates distribution
+  const handleItemPriceChange = (index, val) => {
+    const updated = items.map((it, idx) => (idx === index ? { ...it, price: val } : it));
+    const dist = calculateDistribution(updated, grandTotal, gstRatePercent);
+    setItems(dist.newItems);
+    setNetAmount(dist.netAmount);
+    setGstAmount(dist.gstAmount);
+    setProductAmountError(dist.error);
+  };
+
+  const handleItemPriceBlur = (index) => {
+    const val = parseFloat(items[index]?.price) || 0;
+    const formattedPrice = val > 0 ? val.toFixed(2) : '1.00';
+    const updated = items.map((it, idx) => (idx === index ? { ...it, price: formattedPrice } : it));
+    const dist = calculateDistribution(updated, grandTotal, gstRatePercent);
+    setItems(dist.newItems);
+    setNetAmount(dist.netAmount);
+    setGstAmount(dist.gstAmount);
+    setProductAmountError(dist.error);
+  };
+
+  // User enters total on non-last row: recalculates sqft and last row remaining
+  const handleItemTotalChange = (index, val) => {
+    const updated = items.map((it, idx) => (idx === index ? { ...it, total: val } : it));
+    const dist = calculateDistribution(updated, grandTotal, gstRatePercent);
+    setItems(dist.newItems);
+    setNetAmount(dist.netAmount);
+    setGstAmount(dist.gstAmount);
+    setProductAmountError(dist.error);
+  };
+
+  const handleItemTotalBlur = (index) => {
+    const val = parseFloat(items[index]?.total) || 0;
+    const formattedTotal = val > 0 ? val.toFixed(2) : '0.00';
+    const updated = items.map((it, idx) => (idx === index ? { ...it, total: formattedTotal } : it));
+    const dist = calculateDistribution(updated, grandTotal, gstRatePercent);
+    setItems(dist.newItems);
+    setNetAmount(dist.netAmount);
+    setGstAmount(dist.gstAmount);
+    setProductAmountError(dist.error);
   };
 
   const addItemRow = () => {
-    setItems([...items, { product_id: null, product_name: '', price: 0, quantity: 1, amount: 0 }]);
+    const updated = [
+      ...items,
+      { product_id: null, product_name: '', hsn_code: '', price: '1.00', quantity: 0, total: 0 },
+    ];
+    const dist = calculateDistribution(updated, grandTotal, gstRatePercent);
+    setItems(dist.newItems);
+    setNetAmount(dist.netAmount);
+    setGstAmount(dist.gstAmount);
+    setProductAmountError(dist.error);
   };
 
   const removeItemRow = (index) => {
     if (items.length <= 1) return;
-    setItems(items.filter((_, idx) => idx !== index));
+    const updated = items.filter((_, idx) => idx !== index);
+    const dist = calculateDistribution(updated, grandTotal, gstRatePercent);
+    setItems(dist.newItems);
+    setNetAmount(dist.netAmount);
+    setGstAmount(dist.gstAmount);
+    setProductAmountError(dist.error);
   };
-
-  // Real-time calculation totals
-  const totals = useMemo(() => {
-    const taxableSubtotal = items.reduce((acc, curr) => acc + (Number(curr.amount) || 0), 0);
-    const rateFactor = gstRatePercent / 100;
-
-    let cgst = 0;
-    let sgst = 0;
-    let igst = 0;
-
-    if (isInterstate) {
-      igst = Number((taxableSubtotal * rateFactor).toFixed(2));
-    } else {
-      cgst = Number(((taxableSubtotal * rateFactor) / 2).toFixed(2));
-      sgst = Number(((taxableSubtotal * rateFactor) / 2).toFixed(2));
-    }
-
-    const totalTax = cgst + sgst + igst;
-    const grandTotal = Number((taxableSubtotal + totalTax).toFixed(2));
-
-    return {
-      taxableSubtotal,
-      cgst,
-      sgst,
-      igst,
-      totalTax,
-      grandTotal,
-    };
-  }, [items, gstRatePercent, isInterstate]);
 
   // Submit Handler
   const handleSubmit = async (e) => {
@@ -309,9 +557,23 @@ export default function GSTInvoiceFormDialog({
       return;
     }
 
-    const validItems = items.filter((it) => it.product_id && it.price > 0 && it.quantity > 0);
+    const gtVal = parseFloat(grandTotal) || 0;
+    if (gtVal <= 0) {
+      setErrorMsg('Please enter a Grand Total amount.');
+      return;
+    }
+
+    if (productAmountError) {
+      setErrorMsg(productAmountError);
+      return;
+    }
+
+    const validItems = items.filter(
+      (it) => it.product_id && (parseFloat(it.price) || 0) > 0 && (parseFloat(it.quantity) || 0) > 0
+    );
+
     if (validItems.length === 0) {
-      setErrorMsg('Please add at least one line item with a product, rate, and quantity.');
+      setErrorMsg('Please add at least one product with a valid name, price, and total.');
       return;
     }
 
@@ -329,25 +591,28 @@ export default function GSTInvoiceFormDialog({
         is_interstate: isInterstate,
         items: validItems.map((it) => ({
           product_id: it.product_id,
-          price: it.price,
-          quantity: it.quantity,
+          price: round2(it.price),
+          quantity: round2(it.quantity),
         })),
         payment_status: paymentStatus,
         payment_method: paymentMethod,
-        payment_amount: paymentAmount || 0,
+        payment_amount: Number(paymentAmount) || 0,
         payment_date: paymentDate ? paymentDate.toISOString().split('T')[0] : null,
         cheque_no: chequeNo.trim(),
-        transport: transport.truck_no || transport.transporter_name ? {
-          truck_no: transport.truck_no.trim(),
-          transporter_name: transport.transporter_name.trim(),
-          driver_name: transport.driver_name.trim(),
-          driver_phone: transport.driver_phone.trim(),
-          lr_no: transport.lr_no.trim(),
-          lr_date: transport.lr_date ? transport.lr_date.toISOString().split('T')[0] : null,
-          freight_amount: transport.freight_amount || 0,
-          advance_paid: transport.advance_paid || 0,
-          notes: transport.notes.trim(),
-        } : null,
+        transport:
+          truckNo.trim() || transport.transporter_name.trim() || transport.driver_name.trim()
+            ? {
+                truck_no: truckNo.trim(),
+                transporter_name: transport.transporter_name.trim(),
+                driver_name: transport.driver_name.trim(),
+                driver_phone: transport.driver_phone.trim(),
+                lr_no: transport.lr_no.trim(),
+                lr_date: transport.lr_date ? transport.lr_date.toISOString().split('T')[0] : null,
+                freight_amount: Number(transport.freight_amount) || 0,
+                advance_paid: Number(transport.advance_paid) || 0,
+                notes: transport.notes.trim(),
+              }
+            : null,
       };
 
       if (isEdit) {
@@ -370,7 +635,7 @@ export default function GSTInvoiceFormDialog({
     }
   };
 
-  // Footer adheres to mandatory convention:
+  // Footer adheres strictly to AGENTS.md conventions:
   // Edit modals: [Update/Save] [Cancel]  (me-auto) ······ [Delete] (right)
   // Add modals: [Save] [Cancel] (me-auto)
   const dialogFooter = (
@@ -386,7 +651,7 @@ export default function GSTInvoiceFormDialog({
     >
       <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
         <Button
-          label={isEdit ? 'Update Invoice' : 'Save Invoice'}
+          label={isEdit ? 'Update GST Bill' : 'Save GST Bill'}
           icon="pi pi-check"
           loading={submitting}
           onClick={handleSubmit}
@@ -420,7 +685,7 @@ export default function GSTInvoiceFormDialog({
       visible={visible}
       modal
       position="center"
-      style={{ width: '1000px', maxWidth: '96vw' }}
+      style={{ width: '1020px', maxWidth: '96vw' }}
       breakpoints={{ '960px': '92vw', '640px': '98vw' }}
       footer={dialogFooter}
       onHide={onHide}
@@ -444,7 +709,7 @@ export default function GSTInvoiceFormDialog({
         </div>
       )}
 
-      <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+      <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '18px' }}>
         {/* Transaction Type Segmented Switcher */}
         <div
           style={{
@@ -460,7 +725,16 @@ export default function GSTInvoiceFormDialog({
           }}
         >
           <div>
-            <div style={{ fontSize: '0.875rem', fontWeight: 700, color: 'var(--text-main)', display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <div
+              style={{
+                fontSize: '0.875rem',
+                fontWeight: 700,
+                color: 'var(--text-main)',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px',
+              }}
+            >
               <span>Invoice Type:</span>
               <span style={{ color: isSale ? 'var(--primary-color)' : '#b45309', fontWeight: 800 }}>
                 {isSale ? 'SALE TAX INVOICE (OUTWARD)' : 'PURCHASE TAX INVOICE (INWARD)'}
@@ -494,7 +768,7 @@ export default function GSTInvoiceFormDialog({
           )}
         </div>
 
-        {/* Section 1: Header & Party Details */}
+        {/* Section 1: Bill & Customer Information */}
         <div className="gst-invoice-grid-4">
           <div>
             <label style={{ display: 'block', marginBottom: '6px', fontSize: '0.85rem', fontWeight: 600 }}>
@@ -503,7 +777,7 @@ export default function GSTInvoiceFormDialog({
             <InputText
               value={invoiceNo}
               onChange={(e) => setInvoiceNo(e.target.value)}
-              placeholder="e.g. GST-2024-001"
+              placeholder="Auto-generated if empty"
               style={{ width: '100%' }}
               disabled={isEdit}
             />
@@ -524,6 +798,18 @@ export default function GSTInvoiceFormDialog({
 
           <div>
             <label style={{ display: 'block', marginBottom: '6px', fontSize: '0.85rem', fontWeight: 600 }}>
+              Truck Number
+            </label>
+            <InputText
+              value={truckNo}
+              onChange={(e) => handleTruckNoChange(e.target.value)}
+              placeholder="e.g. GJ05MX9164"
+              style={{ width: '100%' }}
+            />
+          </div>
+
+          <div>
+            <label style={{ display: 'block', marginBottom: '6px', fontSize: '0.85rem', fontWeight: 600 }}>
               Select Registered {isSale ? 'Customer' : 'Supplier'}
             </label>
             <Dropdown
@@ -535,18 +821,6 @@ export default function GSTInvoiceFormDialog({
               placeholder={`Choose ${isSale ? 'Customer' : 'Supplier'}...`}
               filter
               showClear
-              style={{ width: '100%' }}
-            />
-          </div>
-
-          <div>
-            <label style={{ display: 'block', marginBottom: '6px', fontSize: '0.85rem', fontWeight: 600 }}>
-              GSTIN Number
-            </label>
-            <InputText
-              value={partyGstin}
-              onChange={(e) => setPartyGstin(e.target.value.toUpperCase())}
-              placeholder="e.g. 24AAAAA0000A1Z5"
               style={{ width: '100%' }}
             />
           </div>
@@ -568,67 +842,30 @@ export default function GSTInvoiceFormDialog({
 
           <div>
             <label style={{ display: 'block', marginBottom: '6px', fontSize: '0.85rem', fontWeight: 600 }}>
-              Billing / Delivery Address
+              GSTIN Number
             </label>
             <InputText
-              value={partyAddress}
-              onChange={(e) => setPartyAddress(e.target.value)}
-              placeholder="Street, City, State, PIN"
+              value={partyGstin}
+              onChange={(e) => setPartyGstin(e.target.value.toUpperCase())}
+              placeholder="e.g. 24AAAAA0000A1Z5"
               style={{ width: '100%' }}
             />
           </div>
         </div>
 
-        {/* GST Configuration Bar */}
-        <div
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            flexWrap: 'wrap',
-            gap: '12px',
-            background: 'var(--primary-container)',
-            padding: '10px 16px',
-            borderRadius: '8px',
-            border: '1px solid #dbeafe',
-          }}
-        >
-          <div style={{ display: 'flex', alignItems: 'center', gap: '20px', flexWrap: 'wrap' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
-              <span style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--primary-color)' }}>
-                GST Rate:
-              </span>
-              <Dropdown
-                value={gstRatePercent}
-                options={DEFAULT_GST_RATES}
-                onChange={(e) => setGstRatePercent(e.value)}
-                style={{ width: '220px', maxWidth: '100%' }}
-              />
-            </div>
-
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <Checkbox
-                inputId="is_interstate_cb"
-                checked={isInterstate}
-                onChange={(e) => setIsInterstate(e.checked)}
-              />
-              <label
-                htmlFor="is_interstate_cb"
-                style={{ fontSize: '0.875rem', fontWeight: 600, cursor: 'pointer', color: 'var(--text-main)' }}
-              >
-                Interstate Transaction (IGST {gstRatePercent}%)
-              </label>
-            </div>
-          </div>
-
-          <div style={{ fontSize: '0.85rem', color: 'var(--primary-color)', fontWeight: 600 }}>
-            {isInterstate
-              ? `IGST: ${gstRatePercent}% applied`
-              : `CGST: ${gstRatePercent / 2}% + SGST: ${gstRatePercent / 2}% applied`}
-          </div>
+        <div>
+          <label style={{ display: 'block', marginBottom: '6px', fontSize: '0.85rem', fontWeight: 600 }}>
+            Billing / Delivery Address
+          </label>
+          <InputText
+            value={partyAddress}
+            onChange={(e) => setPartyAddress(e.target.value)}
+            placeholder="Street, City, State, PIN"
+            style={{ width: '100%' }}
+          />
         </div>
 
-        {/* Section 2: Items Table */}
+        {/* Section 2: Products Table with Frozen Sqft & Reverse Calculation */}
         <div style={{ border: '1px solid #e2e8f0', borderRadius: '8px', overflow: 'hidden' }}>
           <div
             style={{
@@ -641,11 +878,11 @@ export default function GSTInvoiceFormDialog({
             }}
           >
             <span style={{ fontWeight: 700, fontSize: '0.9rem', textTransform: 'uppercase', color: 'var(--text-muted)' }}>
-              Invoice Items & Stone Measurements
+              Products
             </span>
             <Button
               type="button"
-              label="Add Item Row"
+              label="+ Add Product"
               icon="pi pi-plus"
               className="p-button-sm p-button-outlined"
               onClick={addItemRow}
@@ -653,75 +890,274 @@ export default function GSTInvoiceFormDialog({
           </div>
 
           <div style={{ padding: '10px', overflowX: 'auto' }}>
-            <table style={{ width: '100%', minWidth: '650px', borderCollapse: 'collapse', fontSize: '0.875rem' }}>
+            <table
+              id="productsTable"
+              style={{ width: '100%', minWidth: '700px', borderCollapse: 'collapse', fontSize: '0.875rem' }}
+            >
               <thead>
                 <tr style={{ color: 'var(--text-muted)', textAlign: 'left', borderBottom: '1px solid #e2e8f0' }}>
-                  <th style={{ padding: '8px', width: '40px' }}>#</th>
-                  <th style={{ padding: '8px' }}>Product / Stone Type *</th>
-                  <th style={{ padding: '8px', width: '150px' }}>Rate (₹/Sq.Ft) *</th>
-                  <th style={{ padding: '8px', width: '140px' }}>Quantity *</th>
-                  <th style={{ padding: '8px', textAlign: 'right', width: '150px' }}>Taxable Amount</th>
+                  <th style={{ padding: '8px', width: '35px' }}>#</th>
+                  <th style={{ padding: '8px', minWidth: '220px' }}>Product Name *</th>
+                  <th style={{ padding: '8px', width: '120px' }}>HSN Code</th>
+                  <th style={{ padding: '8px', width: '130px' }}>Sqft (Qty)</th>
+                  <th style={{ padding: '8px', width: '120px', textAlign: 'right' }}>Price (₹) *</th>
+                  <th style={{ padding: '8px', width: '140px', textAlign: 'right' }}>Total (₹)</th>
                   <th style={{ padding: '8px', textAlign: 'center', width: '60px' }}>Action</th>
                 </tr>
               </thead>
               <tbody>
-                {items.map((item, idx) => (
-                  <tr key={idx} style={{ borderBottom: '1px solid #f1f5f9' }}>
-                    <td style={{ padding: '8px', color: 'var(--text-muted)' }}>{idx + 1}</td>
-                    <td style={{ padding: '8px' }}>
-                      <Dropdown
-                        value={item.product_id}
-                        options={Array.isArray(productsList) ? productsList : []}
-                        optionLabel="name"
-                        optionValue="id"
-                        onChange={(e) => handleProductChange(idx, e.value)}
-                        placeholder="Select stone product..."
-                        filter
-                        style={{ width: '100%' }}
-                      />
-                    </td>
-                    <td style={{ padding: '8px' }}>
-                      <InputNumber
-                        value={item.price}
-                        onValueChange={(e) => handleItemFieldChange(idx, 'price', e.value || 0)}
-                        mode="decimal"
-                        minFractionDigits={2}
-                        maxFractionDigits={2}
-                        placeholder="0.00"
-                        style={{ width: '100%' }}
-                      />
-                    </td>
-                    <td style={{ padding: '8px' }}>
-                      <InputNumber
-                        value={item.quantity}
-                        onValueChange={(e) => handleItemFieldChange(idx, 'quantity', e.value || 0)}
-                        mode="decimal"
-                        minFractionDigits={2}
-                        maxFractionDigits={2}
-                        placeholder="1.00"
-                        style={{ width: '100%' }}
-                      />
-                    </td>
-                    <td style={{ padding: '8px', textAlign: 'right', fontWeight: 600 }} className="tabular-nums">
-                      ₹{formatINR(item.amount)}
-                    </td>
-                    <td style={{ padding: '8px', textAlign: 'center' }}>
-                      <Button
-                        type="button"
-                        icon="pi pi-trash"
-                        className="p-button-danger p-button-text p-button-sm"
-                        onClick={() => removeItemRow(idx)}
-                        disabled={items.length <= 1}
-                      />
-                    </td>
-                  </tr>
-                ))}
+                {items.map((item, idx) => {
+                  const isSingleRow = items.length === 1;
+                  const isLastRow = idx === items.length - 1;
+                  const isTotalReadOnly = isSingleRow || isLastRow;
+
+                  return (
+                    <tr key={idx} style={{ borderBottom: '1px solid #f1f5f9' }}>
+                      <td style={{ padding: '8px', color: 'var(--text-muted)' }}>{idx + 1}</td>
+                      <td style={{ padding: '8px' }}>
+                        <Dropdown
+                          value={item.product_id}
+                          options={Array.isArray(productsList) ? productsList : []}
+                          optionLabel="name"
+                          optionValue="id"
+                          onChange={(e) => handleProductChange(idx, e.value)}
+                          placeholder="Select stone product..."
+                          filter
+                          style={{ width: '100%' }}
+                        />
+                      </td>
+                      <td style={{ padding: '8px' }}>
+                        <InputText
+                          value={item.hsn_code || ''}
+                          readOnly
+                          tabIndex={-1}
+                          style={{
+                            width: '100%',
+                            backgroundColor: '#e9ecef',
+                            cursor: 'not-allowed',
+                            color: '#64748b',
+                          }}
+                          placeholder="HSN"
+                        />
+                      </td>
+                      <td style={{ padding: '8px' }}>
+                        {/* Frozen Sqft field */}
+                        <InputText
+                          value={
+                            item.quantity !== undefined && item.quantity !== ''
+                              ? Number(item.quantity).toFixed(2)
+                              : '0.00'
+                          }
+                          readOnly
+                          tabIndex={-1}
+                          style={{
+                            width: '100%',
+                            backgroundColor: '#e9ecef',
+                            cursor: 'not-allowed',
+                            fontWeight: 600,
+                            color: '#1e293b',
+                            textAlign: 'right',
+                          }}
+                          className="tabular-nums product-quantity"
+                          placeholder="0.00"
+                        />
+                      </td>
+                      <td style={{ padding: '8px' }}>
+                        <InputText
+                          type="number"
+                          step="any"
+                          min="0"
+                          value={item.price}
+                          onChange={(e) => handleItemPriceChange(idx, e.target.value)}
+                          onBlur={() => handleItemPriceBlur(idx)}
+                          style={{ width: '100%', textAlign: 'right' }}
+                          className="tabular-nums product-price"
+                          placeholder="0.00"
+                          required
+                        />
+                      </td>
+                      <td style={{ padding: '8px' }}>
+                        {isTotalReadOnly ? (
+                          <InputText
+                            value={
+                              item.total !== undefined && item.total !== ''
+                                ? Number(item.total).toFixed(2)
+                                : '0.00'
+                            }
+                            readOnly
+                            tabIndex={-1}
+                            style={{
+                              width: '100%',
+                              backgroundColor: '#e9ecef',
+                              cursor: 'not-allowed',
+                              fontWeight: 600,
+                              color: '#1e293b',
+                              textAlign: 'right',
+                            }}
+                            className="tabular-nums product-total"
+                            placeholder="0.00"
+                          />
+                        ) : (
+                          <InputText
+                            type="number"
+                            step="any"
+                            min="0"
+                            value={item.total}
+                            onChange={(e) => handleItemTotalChange(idx, e.target.value)}
+                            onBlur={() => handleItemTotalBlur(idx)}
+                            style={{ width: '100%', textAlign: 'right' }}
+                            className="tabular-nums product-total"
+                            placeholder="0.00"
+                            required
+                          />
+                        )}
+                      </td>
+                      <td style={{ padding: '8px', textAlign: 'center' }}>
+                        <Button
+                          type="button"
+                          icon="pi pi-trash"
+                          className="p-button-danger p-button-text p-button-sm"
+                          onClick={() => removeItemRow(idx)}
+                          disabled={items.length <= 1}
+                        />
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>
         </div>
 
-        {/* Section 3: Transport & Logistics (Expandable) */}
+        {/* Section 3: Amount Details (Reverse Calculation Driver) */}
+        <div style={{ border: '1px solid #e2e8f0', borderRadius: '8px', padding: '16px', background: '#ffffff' }}>
+          <div style={{ fontSize: '0.9rem', fontWeight: 700, color: 'var(--text-main)', marginBottom: '12px' }}>
+            Amount Details
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '14px' }}>
+            <div>
+              <label style={{ display: 'block', marginBottom: '6px', fontSize: '0.85rem', fontWeight: 600 }}>
+                Grand Total (GST Inclusive) <span style={{ color: 'red' }}>*</span>
+              </label>
+              <InputText
+                type="number"
+                step="any"
+                min="0"
+                value={grandTotal}
+                onChange={(e) => handleGrandTotalChange(e.target.value)}
+                onBlur={handleGrandTotalBlur}
+                placeholder="Enter Grand Total (e.g. 50000)"
+                style={{ width: '100%', fontWeight: 700, fontSize: '1rem' }}
+                className="tabular-nums"
+                required
+              />
+              <small style={{ color: 'var(--text-muted)', fontSize: '0.75rem', marginTop: '4px', display: 'block' }}>
+                Enter amount, then calculated as Net Amount + GST Amount
+              </small>
+            </div>
+
+            <div>
+              <label style={{ display: 'block', marginBottom: '6px', fontSize: '0.85rem', fontWeight: 600 }}>
+                Net Amount (Auto-calculated)
+              </label>
+              <InputText
+                value={`₹${Number(netAmount).toFixed(2)}`}
+                readOnly
+                tabIndex={-1}
+                style={{ width: '100%', backgroundColor: '#e9ecef', cursor: 'not-allowed', fontWeight: 700 }}
+                className="tabular-nums"
+              />
+              <small style={{ color: 'var(--text-muted)', fontSize: '0.75rem', marginTop: '4px', display: 'block' }}>
+                Net Amount = Sqft × Price
+              </small>
+            </div>
+
+            <div>
+              <label style={{ display: 'block', marginBottom: '6px', fontSize: '0.85rem', fontWeight: 600 }}>
+                GST Amount (Auto-calculated)
+              </label>
+              <InputText
+                value={`₹${Number(gstAmount).toFixed(2)}`}
+                readOnly
+                tabIndex={-1}
+                style={{ width: '100%', backgroundColor: '#e9ecef', cursor: 'not-allowed', fontWeight: 700 }}
+                className="tabular-nums"
+              />
+              <small style={{ color: 'var(--text-muted)', fontSize: '0.75rem', marginTop: '4px', display: 'block' }}>
+                Auto-calculated: Net Amount × GST%
+              </small>
+            </div>
+          </div>
+
+          {productAmountError && (
+            <div style={{ color: '#ef4444', fontSize: '0.85rem', fontWeight: 600, marginTop: '10px' }}>
+              <i className="pi pi-exclamation-circle" style={{ marginRight: '6px' }} />
+              {productAmountError}
+            </div>
+          )}
+        </div>
+
+        {/* Section 4: GST Configuration & Rates */}
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            flexWrap: 'wrap',
+            gap: '12px',
+            background: 'var(--primary-container)',
+            padding: '12px 16px',
+            borderRadius: '8px',
+            border: '1px solid #dbeafe',
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', gap: '20px', flexWrap: 'wrap' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+              <span style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--primary-color)' }}>
+                GST Rate:
+              </span>
+              <Dropdown
+                value={gstRatePercent}
+                options={DEFAULT_GST_RATES}
+                onChange={(e) => handleGstRateChange(e.value)}
+                style={{ width: '220px', maxWidth: '100%' }}
+              />
+            </div>
+
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <Checkbox
+                inputId="is_interstate_cb"
+                checked={isInterstate}
+                onChange={(e) => handleInterstateChange(e.checked)}
+              />
+              <label
+                htmlFor="is_interstate_cb"
+                style={{ fontSize: '0.875rem', fontWeight: 600, cursor: 'pointer', color: 'var(--text-main)' }}
+              >
+                Interstate Transaction (IGST {gstRatePercent}%)
+              </label>
+            </div>
+          </div>
+
+          <div style={{ display: 'flex', gap: '14px', alignItems: 'center', fontSize: '0.85rem' }}>
+            {!isInterstate ? (
+              <>
+                <span style={{ color: 'var(--text-muted)' }}>
+                  SGST: <strong>{(gstRatePercent / 2).toFixed(1)}%</strong>
+                </span>
+                <span style={{ color: 'var(--text-muted)' }}>
+                  CGST: <strong>{(gstRatePercent / 2).toFixed(1)}%</strong>
+                </span>
+              </>
+            ) : (
+              <span style={{ color: 'var(--text-muted)' }}>
+                IGST: <strong>{gstRatePercent.toFixed(1)}%</strong>
+              </span>
+            )}
+          </div>
+        </div>
+
+        {/* Section 5: Transport & Logistics (Expandable Accordion) */}
         <Accordion>
           <AccordionTab
             header={
@@ -737,8 +1173,8 @@ export default function GSTInvoiceFormDialog({
                   Truck / Vehicle Number
                 </label>
                 <InputText
-                  value={transport.truck_no}
-                  onChange={(e) => setTransport({ ...transport, truck_no: e.target.value.toUpperCase() })}
+                  value={truckNo}
+                  onChange={(e) => handleTruckNoChange(e.target.value)}
                   placeholder="e.g. GJ-01-AB-1234"
                   style={{ width: '100%' }}
                 />
@@ -794,6 +1230,19 @@ export default function GSTInvoiceFormDialog({
 
               <div>
                 <label style={{ display: 'block', marginBottom: '4px', fontSize: '0.8rem', fontWeight: 600 }}>
+                  LR / Bilty Date
+                </label>
+                <Calendar
+                  value={transport.lr_date}
+                  onChange={(e) => setTransport({ ...transport, lr_date: e.value })}
+                  dateFormat="dd-mm-yy"
+                  showIcon
+                  style={{ width: '100%' }}
+                />
+              </div>
+
+              <div>
+                <label style={{ display: 'block', marginBottom: '4px', fontSize: '0.8rem', fontWeight: 600 }}>
                   Freight Amount (₹)
                 </label>
                 <InputNumber
@@ -818,14 +1267,14 @@ export default function GSTInvoiceFormDialog({
                 />
               </div>
 
-              <div>
+              <div style={{ gridColumn: 'span 2' }}>
                 <label style={{ display: 'block', marginBottom: '4px', fontSize: '0.8rem', fontWeight: 600 }}>
                   Transport Remarks / Route
                 </label>
                 <InputText
                   value={transport.notes}
                   onChange={(e) => setTransport({ ...transport, notes: e.target.value })}
-                  placeholder="Destination, notes..."
+                  placeholder="Destination, delivery notes..."
                   style={{ width: '100%' }}
                 />
               </div>
@@ -833,12 +1282,20 @@ export default function GSTInvoiceFormDialog({
           </AccordionTab>
         </Accordion>
 
-        {/* Section 4: Payment & Bottom Calculation Summary */}
+        {/* Section 6: Payment & Totals Summary */}
         <div className="gst-invoice-bottom-grid">
           {/* Payment Details */}
           <div style={{ background: '#f8fafc', padding: '14px', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
-            <div style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: '10px' }}>
-              Payment & Settlement
+            <div
+              style={{
+                fontSize: '0.75rem',
+                fontWeight: 700,
+                color: 'var(--text-muted)',
+                textTransform: 'uppercase',
+                marginBottom: '10px',
+              }}
+            >
+              Payment Information
             </div>
             <div className="gst-payment-fields-grid">
               <div>
@@ -880,50 +1337,85 @@ export default function GSTInvoiceFormDialog({
 
               <div>
                 <label style={{ display: 'block', marginBottom: '4px', fontSize: '0.8rem', fontWeight: 600 }}>
-                  Cheque / UTR Ref No
+                  Payment Date
                 </label>
-                <InputText
-                  value={chequeNo}
-                  onChange={(e) => setChequeNo(e.target.value)}
-                  placeholder="Cheque / UTR number"
+                <Calendar
+                  value={paymentDate}
+                  onChange={(e) => setPaymentDate(e.value)}
+                  dateFormat="dd-mm-yy"
+                  showIcon
                   style={{ width: '100%' }}
                 />
               </div>
+
+              {paymentMethod === 'cheque' && (
+                <div style={{ gridColumn: 'span 2' }}>
+                  <label style={{ display: 'block', marginBottom: '4px', fontSize: '0.8rem', fontWeight: 600 }}>
+                    Cheque / UTR Ref No
+                  </label>
+                  <InputText
+                    value={chequeNo}
+                    onChange={(e) => setChequeNo(e.target.value)}
+                    placeholder="Cheque / UTR number"
+                    style={{ width: '100%' }}
+                  />
+                </div>
+              )}
             </div>
           </div>
 
           {/* Calculations Summary Card */}
           <div style={{ background: '#f8fafc', padding: '14px', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
-            <div style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: '10px' }}>
+            <div
+              style={{
+                fontSize: '0.75rem',
+                fontWeight: 700,
+                color: 'var(--text-muted)',
+                textTransform: 'uppercase',
+                marginBottom: '10px',
+              }}
+            >
               Tax & Invoice Totals
             </div>
 
             <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '6px', fontSize: '0.875rem' }}>
-              <span style={{ color: 'var(--text-muted)' }}>Taxable Subtotal:</span>
-              <span className="tabular-nums" style={{ fontWeight: 600 }}>₹{formatINR(totals.taxableSubtotal)}</span>
+              <span style={{ color: 'var(--text-muted)' }}>Net Amount (Taxable):</span>
+              <span className="tabular-nums" style={{ fontWeight: 600 }}>
+                ₹{formatINR(netAmount)}
+              </span>
             </div>
 
             {!isInterstate ? (
               <>
                 <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px', fontSize: '0.85rem' }}>
-                  <span style={{ color: 'var(--text-muted)' }}>CGST ({gstRatePercent / 2}%):</span>
-                  <span className="tabular-nums">₹{formatINR(totals.cgst)}</span>
+                  <span style={{ color: 'var(--text-muted)' }}>CGST ({(gstRatePercent / 2).toFixed(1)}%):</span>
+                  <span className="tabular-nums">₹{formatINR(round2(gstAmount / 2))}</span>
                 </div>
                 <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px', fontSize: '0.85rem' }}>
-                  <span style={{ color: 'var(--text-muted)' }}>SGST ({gstRatePercent / 2}%):</span>
-                  <span className="tabular-nums">₹{formatINR(totals.sgst)}</span>
+                  <span style={{ color: 'var(--text-muted)' }}>SGST ({(gstRatePercent / 2).toFixed(1)}%):</span>
+                  <span className="tabular-nums">₹{formatINR(round2(gstAmount / 2))}</span>
                 </div>
               </>
             ) : (
               <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px', fontSize: '0.85rem' }}>
-                <span style={{ color: 'var(--text-muted)' }}>IGST ({gstRatePercent}%):</span>
-                <span className="tabular-nums">₹{formatINR(totals.igst)}</span>
+                <span style={{ color: 'var(--text-muted)' }}>IGST ({gstRatePercent.toFixed(1)}%):</span>
+                <span className="tabular-nums">₹{formatINR(gstAmount)}</span>
               </div>
             )}
 
-            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px', fontSize: '0.85rem', color: 'var(--text-muted)' }}>
+            <div
+              style={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                marginBottom: '8px',
+                fontSize: '0.85rem',
+                color: 'var(--text-muted)',
+              }}
+            >
               <span>Total Tax:</span>
-              <span className="tabular-nums" style={{ fontWeight: 600 }}>₹{formatINR(totals.totalTax)}</span>
+              <span className="tabular-nums" style={{ fontWeight: 600 }}>
+                ₹{formatINR(gstAmount)}
+              </span>
             </div>
 
             <Divider style={{ margin: '6px 0' }} />
@@ -931,7 +1423,7 @@ export default function GSTInvoiceFormDialog({
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '1.2rem' }}>
               <span style={{ fontWeight: 700, color: 'var(--text-main)' }}>Grand Total:</span>
               <span className="tabular-nums" style={{ fontWeight: 800, color: 'var(--primary-color)' }}>
-                ₹{formatINR(totals.grandTotal)}
+                ₹{formatINR(round2(netAmount + gstAmount))}
               </span>
             </div>
           </div>
