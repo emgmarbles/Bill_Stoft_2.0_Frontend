@@ -12,6 +12,7 @@ import GSTInvoiceList from './pages/gst/GSTInvoiceList';
 import GSTCustomersPage from './pages/gst/GSTCustomersPage';
 import GSTSuppliersPage from './pages/gst/GSTSuppliersPage';
 import GSTProductsPage from './pages/gst/GSTProductsPage';
+import SettingsPage from './pages/settings/SettingsPage';
 
 function PlaceholderPage({ title }) {
   return (
@@ -59,7 +60,7 @@ export default function App() {
                       <Route path="/analysis/*" element={<PlaceholderPage title="Sales Analysis" />} />
                       <Route path="/envelope/*" element={<PlaceholderPage title="Envelopes" />} />
                       <Route path="/backups/*" element={<PlaceholderPage title="Backups" />} />
-                      <Route path="/settings/*" element={<PlaceholderPage title="Settings" />} />
+                      <Route path="/settings/*" element={<SettingsPage />} />
                       <Route path="*" element={<Navigate to="/" replace />} />
                     </Routes>
                   </MainLayout>
