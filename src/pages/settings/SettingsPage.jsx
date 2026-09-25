@@ -3,7 +3,8 @@ import { DataTable } from 'primereact/datatable';
 import { Column } from 'primereact/column';
 import { Button } from 'primereact/button';
 import { InputText } from 'primereact/inputtext';
-import { InputTextarea } from 'primereact/inputtextarea';
+import { Editor } from 'primereact/editor';
+import 'quill/dist/quill.snow.css';
 import { Dialog } from 'primereact/dialog';
 import { Tag } from 'primereact/tag';
 import { Toast } from 'primereact/toast';
@@ -51,6 +52,78 @@ export default function SettingsPage() {
   const [termsAndConditions, setTermsAndConditions] = useState('');
 
   const toast = useRef(null);
+  const quillRef = useRef(null);
+
+  const formatTermsForEditor = (rawTerms) => {
+    if (!rawTerms) return '<ol><li></li></ol>';
+    const trimmed = String(rawTerms).trim();
+    if (trimmed.includes('<ol>') || trimmed.includes('<ul>') || trimmed.includes('<p>')) {
+      return trimmed;
+    }
+    const lines = trimmed
+      .split('\n')
+      .map((l) => l.trim())
+      .filter(Boolean);
+    if (lines.length === 0) return '<ol><li></li></ol>';
+    const lis = lines.map((line) => {
+      const cleanLine = line.replace(/^(\d+[.)]|\(\d+\))\s*/, '');
+      return `<li>${cleanLine}</li>`;
+    });
+    return `<ol>${lis.join('')}</ol>`;
+  };
+
+  const handleEditorLoad = (quillInstance) => {
+    quillRef.current = quillInstance;
+
+    const length = quillInstance.getLength();
+    if (length <= 1) {
+      quillInstance.format('list', 'ordered');
+    }
+
+    if (quillInstance.keyboard && quillInstance.keyboard.bindings) {
+      quillInstance.keyboard.bindings[13] = quillInstance.keyboard.bindings[13] || [];
+      quillInstance.keyboard.bindings[13].unshift({
+        key: 13,
+        collapsed: true,
+        handler: function (range, context) {
+          if (context.format && context.format.list === 'ordered') {
+            const [line] = quillInstance.getLine(range.index);
+            const text = line && line.domNode ? line.domNode.textContent.trim() : '';
+            if (!text) {
+              quillInstance.format('list', false);
+              return false;
+            }
+            return true;
+          }
+
+          if (context.format && context.format.list) {
+            return true;
+          }
+
+          const [line] = quillInstance.getLine(range.index);
+          const text = line && line.domNode ? line.domNode.textContent.trim() : '';
+          if (text) {
+            quillInstance.formatLine(range.index, 1, 'list', 'ordered');
+            return true;
+          }
+
+          quillInstance.format('list', 'ordered');
+          return false;
+        },
+      });
+    }
+  };
+
+  const renderEditorHeader = () => (
+    <span className="ql-formats">
+      <button className="ql-bold" aria-label="Bold" type="button" />
+      <button className="ql-italic" aria-label="Italic" type="button" />
+      <button className="ql-underline" aria-label="Underline" type="button" />
+      <button className="ql-list" value="ordered" aria-label="Numbered List" type="button" />
+      <button className="ql-list" value="bullet" aria-label="Bullet List" type="button" />
+      <button className="ql-clean" aria-label="Clear formatting" type="button" />
+    </span>
+  );
 
   const fetchProfiles = useCallback(async () => {
     try {
@@ -98,12 +171,13 @@ export default function SettingsPage() {
     setBankBranch('');
     setDefaultTruckNo('');
     setIsPrimary(profiles.length === 0);
-    setTermsAndConditions('');
+    setTermsAndConditions('<ol><li></li></ol>');
     setErrorMsg('');
   };
 
   const handleOpenAdd = () => {
     resetForm();
+    setTermsAndConditions('<ol><li></li></ol>');
     setDialogVisible(true);
   };
 
@@ -128,7 +202,7 @@ export default function SettingsPage() {
     setBankBranch(profile.bank_branch || '');
     setDefaultTruckNo(profile.default_truck_no || '');
     setIsPrimary(Boolean(profile.is_primary));
-    setTermsAndConditions(profile.terms_and_conditions || '');
+    setTermsAndConditions(formatTermsForEditor(profile.terms_and_conditions || ''));
     setErrorMsg('');
     setDialogVisible(true);
   };
@@ -458,6 +532,19 @@ export default function SettingsPage() {
                 {[primaryProfile.address_line_1, primaryProfile.city, primaryProfile.pincode].filter(Boolean).join(', ') || '-'}
               </span>
             </div>
+
+            {primaryProfile.terms_and_conditions && (
+              <div style={{ gridColumn: '1 / -1', borderTop: '1px dashed #e4e4e7', paddingTop: '10px', marginTop: '4px' }}>
+                <span style={{ color: '#71717a', display: 'block', fontSize: '0.72rem', textTransform: 'uppercase', fontWeight: 600, marginBottom: '4px' }}>
+                  Invoice Terms & Conditions (Default on Invoices)
+                </span>
+                <div
+                  className="terms-preview-content"
+                  style={{ fontSize: '0.8rem', color: '#3f3f46', lineHeight: 1.5 }}
+                  dangerouslySetInnerHTML={{ __html: formatTermsForEditor(primaryProfile.terms_and_conditions) }}
+                />
+              </div>
+            )}
           </div>
         </div>
       )}
@@ -879,16 +966,27 @@ export default function SettingsPage() {
 
           {/* Section 4: Terms and Conditions */}
           <div>
-            <label style={{ display: 'block', marginBottom: '4px', fontSize: '0.85rem', fontWeight: 600 }}>
-              Invoice Terms & Conditions (Prints at bottom of invoice)
-            </label>
-            <InputTextarea
-              value={termsAndConditions}
-              onChange={(e) => setTermsAndConditions(e.target.value)}
-              placeholder="e.g. 1. Goods once sold will not be returned. 2. Subject to local jurisdiction."
-              rows={3}
-              style={{ width: '100%' }}
-            />
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
+              <label style={{ fontSize: '0.85rem', fontWeight: 600 }}>
+                Invoice Terms & Conditions <span style={{ color: 'var(--text-muted)', fontWeight: 400 }}>(Numbered List Rich Editor)</span>
+              </label>
+              <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+                Press <strong>Enter</strong> to create next numbered point
+              </span>
+            </div>
+            <div className="terms-editor-wrapper">
+              <Editor
+                value={termsAndConditions}
+                onTextChange={(e) => setTermsAndConditions(e.htmlValue || '')}
+                headerTemplate={renderEditorHeader()}
+                onLoad={handleEditorLoad}
+                style={{ height: '170px' }}
+                placeholder="Enter condition point..."
+              />
+            </div>
+            <small style={{ display: 'block', marginTop: '6px', fontSize: '0.75rem', color: '#64748b' }}>
+              Terms are automatically formatted as numbered points. Press <strong>Enter</strong> to create the next point, or press <strong>Enter</strong> on an empty line to end the list.
+            </small>
           </div>
         </form>
       </Dialog>
