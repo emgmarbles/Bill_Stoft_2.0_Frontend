@@ -1,11 +1,14 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Dialog } from 'primereact/dialog';
 import { Button } from 'primereact/button';
 import { Tag } from 'primereact/tag';
 import { Divider } from 'primereact/divider';
 import { formatINR, formatDate } from '../../utils/formatters';
+import { gstService } from '../../services/gstService';
 
 export default function GSTInvoiceDetailDialog({ visible, invoice, onHide, onEdit }) {
+  const [printing, setPrinting] = useState(false);
+
   if (!invoice) return null;
 
   const isSale = invoice.invoice_type === 'sale';
@@ -23,8 +26,17 @@ export default function GSTInvoiceDetailDialog({ visible, invoice, onHide, onEdi
     }
   };
 
-  const handlePrint = () => {
-    window.print();
+  const handlePrint = async () => {
+    if (!invoice?.id) return;
+    setPrinting(true);
+    try {
+      const blob = await gstService.printInvoice(invoice.id);
+      gstService.openPdfBlob(blob, `GST_Bill_${invoice.invoice_no}.pdf`);
+    } catch (err) {
+      console.error('Failed to print GST invoice', err);
+    } finally {
+      setPrinting(false);
+    }
   };
 
   const footerContent = (
@@ -44,6 +56,7 @@ export default function GSTInvoiceDetailDialog({ visible, invoice, onHide, onEdi
           icon="pi pi-print"
           className="p-button-outlined"
           onClick={handlePrint}
+          loading={printing}
         />
         {onEdit && (
           <Button

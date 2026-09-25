@@ -78,6 +78,8 @@ export default function GSTInvoiceList({ type = 'sale' }) {
   const [deleteDialogVisible, setDeleteDialogVisible] = useState(false);
   const [selectedInvoice, setSelectedInvoice] = useState(null);
   const [deleting, setDeleting] = useState(false);
+  const [printingAll, setPrintingAll] = useState(false);
+  const [printingId, setPrintingId] = useState(null);
 
   const toast = useRef(null);
 
@@ -179,6 +181,52 @@ export default function GSTInvoiceList({ type = 'sale' }) {
     }
   };
 
+  const handlePrintSingle = async (inv) => {
+    setPrintingId(inv.id);
+    try {
+      const blob = await gstService.printInvoice(inv.id);
+      gstService.openPdfBlob(blob, `GST_Bill_${inv.invoice_no}.pdf`);
+    } catch (err) {
+      console.error('Failed to print GST bill', err);
+      toast.current?.show({
+        severity: 'error',
+        summary: 'Print Failed',
+        detail: err.response?.data?.detail || 'Could not generate invoice PDF.',
+        life: 4000,
+      });
+    } finally {
+      setPrintingId(null);
+    }
+  };
+
+  const handlePrintAll = async () => {
+    setPrintingAll(true);
+    try {
+      const params = {};
+      if (activeType && activeType !== 'all') {
+        params.type = activeType;
+      }
+      if (debouncedSearch) {
+        params.search = debouncedSearch;
+      }
+      if (paymentStatusFilter) {
+        params.payment_status = paymentStatusFilter;
+      }
+      const blob = await gstService.printAllInvoices(params);
+      gstService.openPdfBlob(blob, 'GST_Bills_All.pdf');
+    } catch (err) {
+      console.error('Failed to print all GST bills', err);
+      toast.current?.show({
+        severity: 'error',
+        summary: 'Print Failed',
+        detail: err.response?.data?.detail || 'No bills found to print.',
+        life: 4000,
+      });
+    } finally {
+      setPrintingAll(false);
+    }
+  };
+
   // Status Badge Renderer
   const statusBodyTemplate = (rowData) => {
     const status = rowData.payment_status || 'pending';
@@ -265,9 +313,17 @@ export default function GSTInvoiceList({ type = 'sale' }) {
         <Button
           icon="pi pi-eye"
           className="p-button-rounded p-button-text p-button-sm"
-          tooltip="View / Print Tax Invoice"
+          tooltip="View Details"
           tooltipOptions={{ position: 'top' }}
           onClick={() => handleOpenDetail(rowData)}
+        />
+        <Button
+          icon={printingId === rowData.id ? 'pi pi-spin pi-spinner' : 'pi pi-print'}
+          className="p-button-rounded p-button-text p-button-info p-button-sm"
+          tooltip="Print Invoice PDF"
+          tooltipOptions={{ position: 'top' }}
+          onClick={() => handlePrintSingle(rowData)}
+          disabled={printingId === rowData.id}
         />
         <Button
           icon="pi pi-pencil"
@@ -322,7 +378,16 @@ export default function GSTInvoiceList({ type = 'sale' }) {
           </p>
         </div>
 
-        <div style={{ display: 'flex', gap: '10px' }}>
+        <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
+          <Button
+            label="Print All Bills"
+            icon="pi pi-print"
+            className="p-button-outlined"
+            onClick={handlePrintAll}
+            loading={printingAll}
+            tooltip="Print all filtered GST bills in combined PDF"
+            tooltipOptions={{ position: 'bottom' }}
+          />
           <Button
             label="Refresh"
             icon="pi pi-refresh"
@@ -627,7 +692,7 @@ export default function GSTInvoiceList({ type = 'sale' }) {
             bodyClassName="text-right"
           />
           <Column field="payment_status" header="Status" body={statusBodyTemplate} sortable headerStyle={{ width: '140px' }} />
-          <Column body={actionBodyTemplate} headerStyle={{ width: '130px', textAlign: 'right' }} />
+          <Column body={actionBodyTemplate} headerStyle={{ width: '160px', textAlign: 'right' }} />
         </DataTable>
       </div>
 

@@ -40,6 +40,28 @@ export const gstService = {
     return response.data;
   },
 
+  // --- PDF Printing ---
+  printInvoice: async (id) => {
+    const response = await api.get(`/v1/gst/invoices/${id}/print/`, {
+      responseType: 'blob',
+    });
+    return response.data;
+  },
+
+  printAllInvoices: async (params = {}) => {
+    const response = await api.get('/v1/gst/invoices/print-all/', {
+      params,
+      responseType: 'blob',
+    });
+    return response.data;
+  },
+
+  openPdfBlob: (blobData, filename = 'GST_Invoice.pdf') => {
+    const blob = new Blob([blobData], { type: 'application/pdf' });
+    const fileURL = URL.createObjectURL(blob);
+    window.open(fileURL, '_blank');
+  },
+
   // --- GST Products Master ---
   getProducts: async (params = {}) => {
     const response = await api.get('/v1/gst/products/', { params });
