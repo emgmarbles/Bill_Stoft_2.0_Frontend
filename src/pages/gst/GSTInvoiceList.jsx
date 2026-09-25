@@ -19,6 +19,7 @@ const PAYMENT_FILTER_OPTIONS = [
   { label: 'Pending Only', value: 'pending' },
   { label: 'Paid in Full', value: 'paid' },
   { label: 'Partial Payments', value: 'partial' },
+  { label: 'Overdue Bills (> 1 Month)', value: 'overdue' },
 ];
 
 export default function GSTInvoiceList({ type = 'sale' }) {
@@ -33,6 +34,9 @@ export default function GSTInvoiceList({ type = 'sale' }) {
 
   const handleTabChange = (targetType) => {
     setActiveType(targetType);
+    setIsOverdueOnly(false);
+    setBannerDismissed(false);
+    setPaymentStatusFilter(null);
     if (targetType === 'purchase') {
       navigate('/purchase-gst-bills');
     } else if (targetType === 'all') {
@@ -71,6 +75,8 @@ export default function GSTInvoiceList({ type = 'sale' }) {
   const [search, setSearch] = useState('');
   const debouncedSearch = useDebounce(search, 350);
   const [paymentStatusFilter, setPaymentStatusFilter] = useState(null);
+  const [isOverdueOnly, setIsOverdueOnly] = useState(false);
+  const [bannerDismissed, setBannerDismissed] = useState(false);
 
   // Dialog states
   const [formDialogVisible, setFormDialogVisible] = useState(false);
@@ -83,14 +89,38 @@ export default function GSTInvoiceList({ type = 'sale' }) {
 
   const toast = useRef(null);
 
+  // Overdue filter handlers
+  const handleToggleOverdueFilter = () => {
+    setIsOverdueOnly((prev) => {
+      const nextVal = !prev;
+      if (nextVal) {
+        setPaymentStatusFilter('overdue');
+      } else if (paymentStatusFilter === 'overdue') {
+        setPaymentStatusFilter(null);
+      }
+      return nextVal;
+    });
+  };
+
+  const handlePaymentFilterChange = (val) => {
+    setPaymentStatusFilter(val);
+    if (val === 'overdue') {
+      setIsOverdueOnly(true);
+    } else {
+      setIsOverdueOnly(false);
+    }
+  };
+
   // Fetch invoices and summary metrics
   const fetchInvoices = useCallback(async () => {
     setLoading(true);
     try {
+      const isOverdueActive = isOverdueOnly || paymentStatusFilter === 'overdue';
       const params = {
         ...(activeType !== 'all' && { invoice_type: activeType }),
         ...(debouncedSearch.trim() && { search: debouncedSearch.trim() }),
-        ...(paymentStatusFilter && { payment_status: paymentStatusFilter }),
+        ...(paymentStatusFilter && paymentStatusFilter !== 'overdue' && { payment_status: paymentStatusFilter }),
+        ...(isOverdueActive && { is_overdue: true }),
       };
 
       const [invoicesData, summaryData] = await Promise.all([
@@ -113,7 +143,7 @@ export default function GSTInvoiceList({ type = 'sale' }) {
     } finally {
       setLoading(false);
     }
-  }, [activeType, debouncedSearch, paymentStatusFilter]);
+  }, [activeType, debouncedSearch, paymentStatusFilter, isOverdueOnly]);
 
   useEffect(() => {
     fetchInvoices();
@@ -202,6 +232,7 @@ export default function GSTInvoiceList({ type = 'sale' }) {
   const handlePrintAll = async () => {
     setPrintingAll(true);
     try {
+      const isOverdueActive = isOverdueOnly || paymentStatusFilter === 'overdue';
       const params = {};
       if (activeType && activeType !== 'all') {
         params.type = activeType;
@@ -209,8 +240,11 @@ export default function GSTInvoiceList({ type = 'sale' }) {
       if (debouncedSearch) {
         params.search = debouncedSearch;
       }
-      if (paymentStatusFilter) {
+      if (paymentStatusFilter && paymentStatusFilter !== 'overdue') {
         params.payment_status = paymentStatusFilter;
+      }
+      if (isOverdueActive) {
+        params.is_overdue = true;
       }
       const blob = await gstService.printAllInvoices(params);
       gstService.openPdfBlob(blob, 'GST_Bills_All.pdf');
@@ -241,7 +275,19 @@ export default function GSTInvoiceList({ type = 'sale' }) {
       label = 'Partial';
     }
 
-    return <Tag value={label} severity={severity} />;
+    return (
+      <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
+        <Tag value={label} severity={severity} />
+        {rowData.is_overdue && (
+          <Tag
+            value="Overdue (>1 mo)"
+            severity="warning"
+            icon="pi pi-clock"
+            style={{ fontSize: '0.68rem', fontWeight: 700, background: '#fef3c7', color: '#92400e', border: '1px solid #fde68a' }}
+          />
+        )}
+      </div>
+    );
   };
 
   // Invoice No Renderer
@@ -496,6 +542,49 @@ export default function GSTInvoiceList({ type = 'sale' }) {
         </div>
       </div>
 
+      {/* Overdue Warning Alert Banner matching reference project */}
+      {isSale && summary?.overdue_count > 0 && !bannerDismissed && (
+        <div
+          className="gst-overdue-banner"
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            flexWrap: 'wrap',
+            gap: '12px',
+            background: '#fffbeb',
+            border: '1px solid #fde68a',
+            borderLeft: '5px solid #f59e0b',
+            borderRadius: '8px',
+            padding: '12px 18px',
+            marginBottom: '20px',
+            color: '#92400e',
+            boxShadow: '0 1px 3px rgba(0,0,0,0.04)',
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+            <i className="pi pi-exclamation-triangle" style={{ fontSize: '1.25rem', color: '#d97706', flexShrink: 0 }} />
+            <span style={{ fontSize: '0.95rem' }}>
+              <strong>⚠️ Attention:</strong> You have <strong>{summary.overdue_count}</strong> GST bill(s) that are overdue (more than 1 month old and not paid).
+            </span>
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <Button
+              label={isOverdueOnly ? 'Show All Bills' : 'Filter Overdue Bills'}
+              icon={isOverdueOnly ? 'pi pi-filter-slash' : 'pi pi-filter'}
+              className={isOverdueOnly ? 'p-button-sm p-button-outlined p-button-warning' : 'p-button-sm p-button-warning'}
+              onClick={handleToggleOverdueFilter}
+            />
+            <Button
+              icon="pi pi-times"
+              className="p-button-rounded p-button-text p-button-secondary p-button-sm"
+              onClick={() => setBannerDismissed(true)}
+              tooltip="Dismiss alert"
+            />
+          </div>
+        </div>
+      )}
+
       {/* Summary KPI Cards */}
       {summary && (
         <div
@@ -516,6 +605,15 @@ export default function GSTInvoiceList({ type = 'sale' }) {
             </div>
             <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '4px' }}>
               {summary.paid_count || 0} Paid · {summary.pending_count || 0} Pending
+              {summary.overdue_count > 0 && (
+                <span
+                  style={{ color: '#d97706', fontWeight: 600, marginLeft: '6px', cursor: 'pointer' }}
+                  onClick={handleToggleOverdueFilter}
+                  title="Click to filter overdue bills"
+                >
+                  · {summary.overdue_count} Overdue
+                </span>
+              )}
             </div>
           </div>
 
@@ -592,14 +690,28 @@ export default function GSTInvoiceList({ type = 'sale' }) {
           )}
         </div>
 
-        <div className="gst-filter-select-wrap" style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+        <div className="gst-filter-select-wrap" style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
           <Dropdown
             value={paymentStatusFilter}
             options={PAYMENT_FILTER_OPTIONS}
-            onChange={(e) => setPaymentStatusFilter(e.value)}
+            onChange={(e) => handlePaymentFilterChange(e.value)}
             placeholder="Payment Status"
             appendTo={typeof document !== 'undefined' ? document.body : undefined}
-            style={{ width: '200px' }}
+            style={{ width: '210px' }}
+          />
+          <Button
+            label="Overdue Only"
+            icon="pi pi-clock"
+            badge={summary?.overdue_count ? String(summary.overdue_count) : undefined}
+            badgeClassName={isOverdueOnly ? 'p-badge-warning' : 'p-badge-danger'}
+            className={
+              isOverdueOnly
+                ? 'p-button-warning p-button-sm font-semibold'
+                : 'p-button-outlined p-button-secondary p-button-sm'
+            }
+            onClick={handleToggleOverdueFilter}
+            tooltip="Filter bills older than 1 month that are not paid"
+            tooltipOptions={{ position: 'top' }}
           />
         </div>
       </div>
@@ -612,6 +724,7 @@ export default function GSTInvoiceList({ type = 'sale' }) {
           paginator
           rows={10}
           rowsPerPageOptions={[10, 25, 50]}
+          rowClassName={(row) => ({ 'gst-row-overdue': Boolean(row.is_overdue) })}
           emptyMessage={
             <div style={{ padding: '36px', textAlign: 'center', color: 'var(--text-muted)' }}>
               <i className="pi pi-inbox" style={{ fontSize: '2rem', marginBottom: '10px', display: 'block', color: '#cbd5e1' }} />

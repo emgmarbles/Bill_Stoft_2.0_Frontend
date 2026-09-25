@@ -821,3 +821,76 @@ a {
   }
 }
 
+/* Terms & Conditions Rich Editor Styles */
+.terms-editor-wrapper {
+  background: #ffffff;
+  border: 1px solid #e4e4e7;
+  border-radius: 8px;
+  overflow: hidden;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.terms-editor-wrapper:focus-within {
+  border-color: #18181b;
+  box-shadow: 0 0 0 2px rgba(24, 24, 27, 0.1);
+}
+
+.terms-editor-wrapper .p-editor-toolbar {
+  background: #f8fafc !important;
+  border: none !important;
+  border-bottom: 1px solid #e4e4e7 !important;
+  padding: 6px 10px !important;
+}
+
+.terms-editor-wrapper .p-editor-content {
+  border: none !important;
+}
+
+.terms-editor-wrapper .ql-editor {
+  min-height: 140px !important;
+  max-height: 240px !important;
+  overflow-y: auto !important;
+  font-size: 0.875rem !important;
+  line-height: 1.6 !important;
+  color: #09090b !important;
+  padding: 10px 14px !important;
+}
+
+.terms-editor-wrapper .ql-editor ol {
+  padding-left: 1.25rem !important;
+  margin: 0 !important;
+}
+
+.terms-editor-wrapper .ql-editor ol li {
+  padding-left: 0.35rem !important;
+  margin-bottom: 4px !important;
+}
+
+.terms-preview-content ol {
+  padding-left: 1.2rem;
+  margin: 0;
+}
+
+.terms-preview-content ol li {
+  margin-bottom: 2px;
+}
+
+/* GST Overdue Bills Highlight and Warning Styles */
+.p-datatable .p-datatable-tbody > tr.gst-row-overdue {
+  background-color: #fffbeb !important;
+}
+
+.p-datatable .p-datatable-tbody > tr.gst-row-overdue:hover {
+  background-color: #fef3c7 !important;
+}
+
+.p-datatable .p-datatable-tbody > tr.gst-row-overdue > td {
+  border-top-color: #fde68a !important;
+  border-bottom-color: #fde68a !important;
+}
+
+.gst-overdue-banner {
+  transition: all 0.2s ease-in-out;
+}
+
+
