@@ -1,16 +1,27 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Dialog } from 'primereact/dialog';
 import { Button } from 'primereact/button';
 import { Tag } from 'primereact/tag';
 import { Divider } from 'primereact/divider';
 import { formatINR, formatDate } from '../../utils/formatters';
 import { gstService } from '../../services/gstService';
+import { companyProfileService } from '../../services/companyProfileService';
 
 export default function GSTInvoiceDetailDialog({ visible, invoice, onHide, onEdit }) {
   const [printing, setPrinting] = useState(false);
+  const [fetchedCompany, setFetchedCompany] = useState(null);
+
+  useEffect(() => {
+    if (visible && !invoice?.company_profile) {
+      companyProfileService.getPrimaryCompanyProfile().then((data) => {
+        if (data) setFetchedCompany(data);
+      }).catch(() => {});
+    }
+  }, [visible, invoice]);
 
   if (!invoice) return null;
 
+  const company = invoice.company_profile || fetchedCompany;
   const isSale = invoice.invoice_type === 'sale';
   const partyTitle = isSale ? 'Buyer / Bill To' : 'Supplier / Vendor';
 
@@ -113,7 +124,39 @@ export default function GSTInvoiceDetailDialog({ visible, invoice, onHide, onEdi
     >
       <div style={{ padding: '8px 4px' }}>
         {/* Top Information Grid */}
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '16px', marginBottom: '20px' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: '16px', marginBottom: '20px' }}>
+          {/* Company Details Box */}
+          {company && (
+            <div style={{ background: '#f8fafc', padding: '16px', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
+              <div style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: '6px' }}>
+                {isSale ? 'Billed From (Seller)' : 'Billed To (Buyer)'}
+              </div>
+              <div style={{ fontWeight: 700, fontSize: '1.05rem', color: 'var(--text-main)' }}>
+                {company.company_name}
+              </div>
+              {company.gstin && (
+                <div style={{ marginTop: '4px', fontSize: '0.85rem', color: 'var(--primary-color)', fontWeight: 600 }}>
+                  GSTIN: <span className="tabular-nums">{company.gstin}</span>
+                </div>
+              )}
+              {company.pan_no && (
+                <div style={{ marginTop: '2px', fontSize: '0.8rem', color: 'var(--text-muted)' }}>
+                  PAN: <span className="tabular-nums">{company.pan_no}</span>
+                </div>
+              )}
+              {(company.address_line_1 || company.city) && (
+                <div style={{ marginTop: '6px', fontSize: '0.85rem', color: 'var(--text-muted)', lineHeight: 1.4 }}>
+                  {[company.address_line_1, company.address_line_2, company.city ? `${company.city} - ${company.pincode || ''}` : '', company.state].filter(Boolean).join(', ')}
+                </div>
+              )}
+              {company.phone && (
+                <div style={{ marginTop: '4px', fontSize: '0.8rem', color: 'var(--text-muted)' }}>
+                  Phone: <span className="tabular-nums">{company.phone}</span>
+                </div>
+              )}
+            </div>
+          )}
+
           {/* Party Box */}
           <div style={{ background: '#f8fafc', padding: '16px', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
             <div style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: '6px' }}>
@@ -261,9 +304,25 @@ export default function GSTInvoiceDetailDialog({ visible, invoice, onHide, onEdi
           </div>
         )}
 
-        {/* Calculations Breakdown */}
-        <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '12px' }}>
-          <div style={{ width: '360px', maxWidth: '100%', background: '#f8fafc', padding: '16px', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
+        {/* Calculations and Bank Details Breakdown */}
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '16px', marginTop: '12px' }}>
+          {company?.bank_name && (
+            <div style={{ flex: '1 1 300px', background: '#f8fafc', padding: '16px', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
+              <div style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: '8px' }}>
+                Bank Account Details
+              </div>
+              <div style={{ fontSize: '0.85rem', lineHeight: 1.6 }}>
+                <div><span style={{ color: 'var(--text-muted)' }}>Bank Name:</span> <strong>{company.bank_name}</strong></div>
+                <div><span style={{ color: 'var(--text-muted)' }}>A/C No:</span> <strong className="tabular-nums">{company.bank_account_no}</strong></div>
+                <div><span style={{ color: 'var(--text-muted)' }}>IFSC Code:</span> <strong className="tabular-nums">{company.bank_ifsc}</strong></div>
+                {company.bank_branch && (
+                  <div><span style={{ color: 'var(--text-muted)' }}>Branch:</span> <strong>{company.bank_branch}</strong></div>
+                )}
+              </div>
+            </div>
+          )}
+
+          <div style={{ width: '360px', maxWidth: '100%', background: '#f8fafc', padding: '16px', borderRadius: '8px', border: '1px solid #e2e8f0', marginLeft: 'auto' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px', fontSize: '0.875rem' }}>
               <span style={{ color: 'var(--text-muted)' }}>Taxable Subtotal:</span>
               <span className="tabular-nums" style={{ fontWeight: 600 }}>₹{formatINR(invoice.total_amount)}</span>
@@ -312,6 +371,19 @@ export default function GSTInvoiceDetailDialog({ visible, invoice, onHide, onEdi
             )}
           </div>
         </div>
+
+        {/* Terms and Conditions */}
+        {company?.terms_and_conditions && (
+          <div style={{ marginTop: '16px', padding: '14px 16px', background: '#f8fafc', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
+            <div style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: '6px' }}>
+              Terms & Conditions
+            </div>
+            <div
+              style={{ fontSize: '0.825rem', color: 'var(--text-main)', lineHeight: 1.5 }}
+              dangerouslySetInnerHTML={{ __html: company.terms_and_conditions }}
+            />
+          </div>
+        )}
       </div>
     </Dialog>
   );

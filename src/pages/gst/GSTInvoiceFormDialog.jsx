@@ -9,6 +9,7 @@ import { Checkbox } from 'primereact/checkbox';
 import { Divider } from 'primereact/divider';
 import { Accordion, AccordionTab } from 'primereact/accordion';
 import gstService from '../../services/gstService';
+import { companyProfileService } from '../../services/companyProfileService';
 import { formatINR } from '../../utils/formatters';
 
 const DEFAULT_GST_RATES = [
@@ -158,6 +159,7 @@ function calculateDistribution(currentItems, grandTotalVal, rate) {
 let cachedProducts = null;
 let cachedCustomers = null;
 let cachedSuppliers = null;
+let cachedCompanyProfile = null;
 
 export default function GSTInvoiceFormDialog({
   visible,
@@ -300,6 +302,22 @@ export default function GSTInvoiceFormDialog({
           } catch (e) {
             console.error('Failed to get next invoice no', e);
           }
+
+          // Fetch primary company profile to prefill default truck number
+          try {
+            if (!cachedCompanyProfile) {
+              cachedCompanyProfile = await companyProfileService.getPrimaryCompanyProfile();
+            }
+            if (!isCancelled && cachedCompanyProfile?.default_truck_no) {
+              setTruckNo((prev) => prev || cachedCompanyProfile.default_truck_no);
+              setTransport((prev) => ({
+                ...prev,
+                truck_no: prev.truck_no || cachedCompanyProfile.default_truck_no,
+              }));
+            }
+          } catch (e) {
+            console.error('Failed to load primary company profile', e);
+          }
         }
       } catch (err) {
         if (!isCancelled) {
@@ -399,8 +417,9 @@ export default function GSTInvoiceFormDialog({
       setChequeNo(invoice.cheque_no || '');
     } else if (visible && !isEdit) {
       // Reset for new invoice creation
+      const defaultTruck = cachedCompanyProfile?.default_truck_no || '';
       setInvoiceDate(new Date());
-      setTruckNo('');
+      setTruckNo(defaultTruck);
       setSelectedPartyId(null);
       setPartyName('');
       setPartyAddress('');
@@ -413,7 +432,7 @@ export default function GSTInvoiceFormDialog({
       setProductAmountError('');
       setItems([{ product_id: null, product_name: '', hsn_code: '', price: '1.00', quantity: 0, total: 0 }]);
       setTransport({
-        truck_no: '',
+        truck_no: defaultTruck,
         transporter_name: '',
         driver_name: '',
         driver_phone: '',
