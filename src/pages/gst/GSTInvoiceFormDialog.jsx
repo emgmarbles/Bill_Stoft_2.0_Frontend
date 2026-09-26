@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Dialog } from 'primereact/dialog';
 import { Button } from 'primereact/button';
 import { InputText } from 'primereact/inputtext';
@@ -244,12 +244,61 @@ export default function GSTInvoiceFormDialog({
     setPartyName('');
     setPartyAddress('');
     setPartyGstin('');
-    if (newType === 'sale' && cachedCustomers) {
-      setPartiesList(cachedCustomers);
-    } else if (newType === 'purchase' && cachedSuppliers) {
-      setPartiesList(cachedSuppliers);
+    if (newType === 'sale') {
+      if (cachedCustomers) {
+        setPartiesList(cachedCustomers);
+      }
+      const initial = [{ product_id: null, product_name: '', hsn_code: '', price: '1.00', quantity: 0, total: 0 }];
+      const dist = calculateDistribution(initial, grandTotal, gstRatePercent);
+      setItems(dist.newItems);
+      setNetAmount(dist.netAmount);
+      setGstAmount(dist.gstAmount);
+      setProductAmountError(dist.error);
+    } else {
+      if (cachedSuppliers) {
+        setPartiesList(cachedSuppliers);
+      }
+      setItems([{ product_id: null, product_name: '', hsn_code: '', price: '0.00', quantity: '1.00', total: 0 }]);
+      setGrandTotal('');
+      setNetAmount(0);
+      setGstAmount(0);
+      setProductAmountError('');
     }
   };
+
+  // Forward calculation for Purchase GST invoices
+  const purchaseTotals = useMemo(() => {
+    if (isSale) return null;
+    const taxableSubtotal = round2(
+      items.reduce((acc, it) => {
+        const p = parseFloat(it.price) || 0;
+        const q = parseFloat(it.quantity) || 0;
+        return acc + round2(p * q);
+      }, 0)
+    );
+    const rateFactor = (parseFloat(gstRatePercent) || 0) / 100;
+    let cgst = 0;
+    let sgst = 0;
+    let igst = 0;
+
+    if (isInterstate) {
+      igst = round2(taxableSubtotal * rateFactor);
+    } else {
+      cgst = round2((taxableSubtotal * rateFactor) / 2);
+      sgst = round2((taxableSubtotal * rateFactor) / 2);
+    }
+    const totalTax = round2(cgst + sgst + igst);
+    const grandTotalVal = round2(taxableSubtotal + totalTax);
+
+    return {
+      taxableSubtotal,
+      cgst,
+      sgst,
+      igst,
+      totalTax,
+      grandTotal: grandTotalVal,
+    };
+  }, [isSale, items, gstRatePercent, isInterstate]);
 
   // Fetch parties and products master with cache and large size limit
   useEffect(() => {
@@ -352,36 +401,63 @@ export default function GSTInvoiceFormDialog({
       setGstRatePercent(rate);
       setIsInterstate(Number(invoice.igst_amount) > 0);
 
-      const gtVal = invoice.grand_total_amount ? Number(invoice.grand_total_amount).toFixed(2) : '';
-      setGrandTotal(gtVal);
+      if (isSale) {
+        const gtVal = invoice.grand_total_amount ? Number(invoice.grand_total_amount).toFixed(2) : '';
+        setGrandTotal(gtVal);
 
-      if (invoice.items && invoice.items.length > 0) {
-        const loadedItems = invoice.items.map((it) => {
-          const p = round2(it.price) || 1;
-          const q = round2(it.quantity) || 0;
-          const tot = round2(it.amount) || round2(p * q);
-          return {
-            product_id: it.product?.id || it.product_id || it.product,
-            product_name: it.product?.name || it.product_name || '',
-            hsn_code: it.product_hsn || it.product?.hsn_code || it.hsn_code || '',
-            price: p > 0 ? p.toFixed(2) : '1.00',
-            quantity: q,
-            total: tot,
-          };
-        });
+        if (invoice.items && invoice.items.length > 0) {
+          const loadedItems = invoice.items.map((it) => {
+            const p = round2(it.price) || 1;
+            const q = round2(it.quantity) || 0;
+            const tot = round2(it.amount) || round2(p * q);
+            return {
+              product_id: it.product?.id || it.product_id || it.product,
+              product_name: it.product?.name || it.product_name || '',
+              hsn_code: it.product_hsn || it.product?.hsn_code || it.hsn_code || '',
+              price: p > 0 ? p.toFixed(2) : '1.00',
+              quantity: q,
+              total: tot,
+            };
+          });
 
-        // Enforce exact distribution calculation matching legacy reference
-        const dist = calculateDistribution(loadedItems, gtVal, rate);
-        setItems(dist.newItems);
-        setNetAmount(dist.netAmount);
-        setGstAmount(dist.gstAmount);
-        setProductAmountError(dist.error);
+          // Enforce exact distribution calculation matching legacy reference for sale
+          const dist = calculateDistribution(loadedItems, gtVal, rate);
+          setItems(dist.newItems);
+          setNetAmount(dist.netAmount);
+          setGstAmount(dist.gstAmount);
+          setProductAmountError(dist.error);
+        } else {
+          const initial = [{ product_id: null, product_name: '', hsn_code: '', price: '1.00', quantity: 0, total: 0 }];
+          const dist = calculateDistribution(initial, gtVal, rate);
+          setItems(dist.newItems);
+          setNetAmount(dist.netAmount);
+          setGstAmount(dist.gstAmount);
+        }
       } else {
-        const initial = [{ product_id: null, product_name: '', hsn_code: '', price: '1.00', quantity: 0, total: 0 }];
-        const dist = calculateDistribution(initial, gtVal, rate);
-        setItems(dist.newItems);
-        setNetAmount(dist.netAmount);
-        setGstAmount(dist.gstAmount);
+        // Purchase invoice: forward calculation, no reverse distribution
+        setGrandTotal('');
+        setNetAmount(0);
+        setGstAmount(0);
+        setProductAmountError('');
+
+        if (invoice.items && invoice.items.length > 0) {
+          const loadedItems = invoice.items.map((it) => {
+            const p = round2(it.price) || 0;
+            const q = round2(it.quantity) || 0;
+            const tot = round2(it.amount) || round2(p * q);
+            return {
+              product_id: it.product?.id || it.product_id || it.product,
+              product_name: it.product?.name || it.product_name || '',
+              hsn_code: it.product_hsn || it.product?.hsn_code || it.hsn_code || '',
+              price: p > 0 ? p.toFixed(2) : '0.00',
+              quantity: q > 0 ? q.toFixed(2) : '1.00',
+              total: tot,
+            };
+          });
+          setItems(loadedItems);
+        } else {
+          setItems([{ product_id: null, product_name: '', hsn_code: '', price: '0.00', quantity: '1.00', total: 0 }]);
+        }
       }
 
       if (invoice.transport_detail) {
@@ -430,7 +506,11 @@ export default function GSTInvoiceFormDialog({
       setNetAmount(0);
       setGstAmount(0);
       setProductAmountError('');
-      setItems([{ product_id: null, product_name: '', hsn_code: '', price: '1.00', quantity: 0, total: 0 }]);
+      if (isSale) {
+        setItems([{ product_id: null, product_name: '', hsn_code: '', price: '1.00', quantity: 0, total: 0 }]);
+      } else {
+        setItems([{ product_id: null, product_name: '', hsn_code: '', price: '0.00', quantity: '1.00', total: 0 }]);
+      }
       setTransport({
         truck_no: defaultTruck,
         transporter_name: '',
@@ -495,11 +575,13 @@ export default function GSTInvoiceFormDialog({
   // GST Rate selection change
   const handleGstRateChange = (newRate) => {
     setGstRatePercent(newRate);
-    const dist = calculateDistribution(items, grandTotal, newRate);
-    setItems(dist.newItems);
-    setNetAmount(dist.netAmount);
-    setGstAmount(dist.gstAmount);
-    setProductAmountError(dist.error);
+    if (isSale) {
+      const dist = calculateDistribution(items, grandTotal, newRate);
+      setItems(dist.newItems);
+      setNetAmount(dist.netAmount);
+      setGstAmount(dist.gstAmount);
+      setProductAmountError(dist.error);
+    }
   };
 
   // Interstate checkbox change
@@ -516,23 +598,66 @@ export default function GSTInvoiceFormDialog({
       setGstRatePercent(rate);
     }
 
+    if (isSale) {
+      const updated = items.map((it, idx) => {
+        if (idx === index) {
+          return {
+            ...it,
+            product_id: productId,
+            product_name: prod ? prod.name : '',
+            hsn_code: prod?.hsn_code || '',
+          };
+        }
+        return it;
+      });
+
+      const dist = calculateDistribution(updated, grandTotal, rate);
+      setItems(dist.newItems);
+      setNetAmount(dist.netAmount);
+      setGstAmount(dist.gstAmount);
+      setProductAmountError(dist.error);
+    } else {
+      const updated = items.map((it, idx) => {
+        if (idx === index) {
+          const p = parseFloat(it.price) || 0;
+          const q = parseFloat(it.quantity) || 0;
+          return {
+            ...it,
+            product_id: productId,
+            product_name: prod ? prod.name : '',
+            hsn_code: prod?.hsn_code || '',
+            total: round2(p * q),
+          };
+        }
+        return it;
+      });
+      setItems(updated);
+    }
+  };
+
+  // Purchase specific item handlers
+  const handlePurchaseQuantityChange = (index, val) => {
     const updated = items.map((it, idx) => {
       if (idx === index) {
-        return {
-          ...it,
-          product_id: productId,
-          product_name: prod ? prod.name : '',
-          hsn_code: prod?.hsn_code || '',
-        };
+        const p = parseFloat(it.price) || 0;
+        const q = parseFloat(val) || 0;
+        return { ...it, quantity: val, total: round2(p * q) };
       }
       return it;
     });
+    setItems(updated);
+  };
 
-    const dist = calculateDistribution(updated, grandTotal, rate);
-    setItems(dist.newItems);
-    setNetAmount(dist.netAmount);
-    setGstAmount(dist.gstAmount);
-    setProductAmountError(dist.error);
+  const handlePurchasePriceChange = (index, val) => {
+    const updated = items.map((it, idx) => {
+      if (idx === index) {
+        const p = parseFloat(val) || 0;
+        const q = parseFloat(it.quantity) || 0;
+        return { ...it, price: val, total: round2(p * q) };
+      }
+      return it;
+    });
+    setItems(updated);
   };
 
   // Live price adjustment: updates sqft preview and recalculates distribution
@@ -578,25 +703,36 @@ export default function GSTInvoiceFormDialog({
   };
 
   const addItemRow = () => {
-    const updated = [
-      ...items,
-      { product_id: null, product_name: '', hsn_code: '', price: '1.00', quantity: 0, total: 0 },
-    ];
-    const dist = calculateDistribution(updated, grandTotal, gstRatePercent);
-    setItems(dist.newItems);
-    setNetAmount(dist.netAmount);
-    setGstAmount(dist.gstAmount);
-    setProductAmountError(dist.error);
+    if (isSale) {
+      const updated = [
+        ...items,
+        { product_id: null, product_name: '', hsn_code: '', price: '1.00', quantity: 0, total: 0 },
+      ];
+      const dist = calculateDistribution(updated, grandTotal, gstRatePercent);
+      setItems(dist.newItems);
+      setNetAmount(dist.netAmount);
+      setGstAmount(dist.gstAmount);
+      setProductAmountError(dist.error);
+    } else {
+      setItems([
+        ...items,
+        { product_id: null, product_name: '', hsn_code: '', price: '0.00', quantity: '1.00', total: 0 },
+      ]);
+    }
   };
 
   const removeItemRow = (index) => {
     if (items.length <= 1) return;
     const updated = items.filter((_, idx) => idx !== index);
-    const dist = calculateDistribution(updated, grandTotal, gstRatePercent);
-    setItems(dist.newItems);
-    setNetAmount(dist.netAmount);
-    setGstAmount(dist.gstAmount);
-    setProductAmountError(dist.error);
+    if (isSale) {
+      const dist = calculateDistribution(updated, grandTotal, gstRatePercent);
+      setItems(dist.newItems);
+      setNetAmount(dist.netAmount);
+      setGstAmount(dist.gstAmount);
+      setProductAmountError(dist.error);
+    } else {
+      setItems(updated);
+    }
   };
 
   // Submit Handler
@@ -610,15 +746,22 @@ export default function GSTInvoiceFormDialog({
       return;
     }
 
-    const gtVal = parseFloat(grandTotal) || 0;
-    if (gtVal <= 0) {
-      setErrorMsg('Please enter a Grand Total amount.');
-      return;
-    }
+    if (isSale) {
+      const gtVal = parseFloat(grandTotal) || 0;
+      if (gtVal <= 0) {
+        setErrorMsg('Please enter a Grand Total amount.');
+        return;
+      }
 
-    if (productAmountError) {
-      setErrorMsg(productAmountError);
-      return;
+      if (productAmountError) {
+        setErrorMsg(productAmountError);
+        return;
+      }
+    } else {
+      if (!purchaseTotals || purchaseTotals.grandTotal <= 0) {
+        setErrorMsg('Total purchase invoice amount must be greater than zero.');
+        return;
+      }
     }
 
     const validItems = items.filter(
@@ -626,7 +769,11 @@ export default function GSTInvoiceFormDialog({
     );
 
     if (validItems.length === 0) {
-      setErrorMsg('Please add at least one product with a valid name, price, and total.');
+      setErrorMsg(
+        isSale
+          ? 'Please add at least one product with a valid name, price, and total.'
+          : 'Please add at least one product with a valid name, price, and quantity.'
+      );
       return;
     }
 
@@ -923,7 +1070,7 @@ export default function GSTInvoiceFormDialog({
           />
         </div>
 
-        {/* Section 2: Products Table with Frozen Sqft & Reverse Calculation */}
+        {/* Section 2: Products Table */}
         <div style={{ border: '1px solid #e2e8f0', borderRadius: '8px', overflow: 'hidden' }}>
           <div
             style={{
@@ -936,11 +1083,11 @@ export default function GSTInvoiceFormDialog({
             }}
           >
             <span style={{ fontWeight: 700, fontSize: '0.9rem', textTransform: 'uppercase', color: 'var(--text-muted)' }}>
-              Products
+              {isSale ? 'Products' : 'Invoice Items & Stone Measurements'}
             </span>
             <Button
               type="button"
-              label="+ Add Product"
+              label={isSale ? '+ Add Product' : 'Add Item Row'}
               icon="pi pi-plus"
               className="p-button-sm p-button-outlined"
               onClick={addItemRow}
@@ -948,103 +1095,68 @@ export default function GSTInvoiceFormDialog({
           </div>
 
           <div style={{ padding: '10px', overflowX: 'auto' }}>
-            <table
-              id="productsTable"
-              style={{ width: '100%', minWidth: '700px', borderCollapse: 'collapse', fontSize: '0.875rem' }}
-            >
-              <thead>
-                <tr style={{ color: 'var(--text-muted)', textAlign: 'left', borderBottom: '1px solid #e2e8f0' }}>
-                  <th style={{ padding: '8px', width: '35px' }}>#</th>
-                  <th style={{ padding: '8px', minWidth: '220px' }}>Product Name *</th>
-                  <th style={{ padding: '8px', width: '120px' }}>HSN Code</th>
-                  <th style={{ padding: '8px', width: '130px' }}>Sqft (Qty)</th>
-                  <th style={{ padding: '8px', width: '120px', textAlign: 'right' }}>Price (₹) *</th>
-                  <th style={{ padding: '8px', width: '140px', textAlign: 'right' }}>Total (₹)</th>
-                  <th style={{ padding: '8px', textAlign: 'center', width: '60px' }}>Action</th>
-                </tr>
-              </thead>
-              <tbody>
-                {items.map((item, idx) => {
-                  const isSingleRow = items.length === 1;
-                  const isLastRow = idx === items.length - 1;
-                  const isTotalReadOnly = isSingleRow || isLastRow;
+            {isSale ? (
+              <table
+                id="productsTable"
+                style={{ width: '100%', minWidth: '700px', borderCollapse: 'collapse', fontSize: '0.875rem' }}
+              >
+                <thead>
+                  <tr style={{ color: 'var(--text-muted)', textAlign: 'left', borderBottom: '1px solid #e2e8f0' }}>
+                    <th style={{ padding: '8px', width: '35px' }}>#</th>
+                    <th style={{ padding: '8px', minWidth: '220px' }}>Product Name *</th>
+                    <th style={{ padding: '8px', width: '120px' }}>HSN Code</th>
+                    <th style={{ padding: '8px', width: '130px' }}>Sqft (Qty)</th>
+                    <th style={{ padding: '8px', width: '120px', textAlign: 'right' }}>Price (₹) *</th>
+                    <th style={{ padding: '8px', width: '140px', textAlign: 'right' }}>Total (₹)</th>
+                    <th style={{ padding: '8px', textAlign: 'center', width: '60px' }}>Action</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {items.map((item, idx) => {
+                    const isSingleRow = items.length === 1;
+                    const isLastRow = idx === items.length - 1;
+                    const isTotalReadOnly = isSingleRow || isLastRow;
 
-                  return (
-                    <tr key={idx} style={{ borderBottom: '1px solid #f1f5f9' }}>
-                      <td style={{ padding: '8px', color: 'var(--text-muted)' }}>{idx + 1}</td>
-                      <td style={{ padding: '8px' }}>
-                        <Dropdown
-                          value={item.product_id}
-                          options={Array.isArray(productsList) ? productsList : []}
-                          optionLabel="name"
-                          optionValue="id"
-                          onChange={(e) => handleProductChange(idx, e.value)}
-                          placeholder={loadingData && productsList.length === 0 ? 'Loading products...' : 'Select stone product...'}
-                          filter
-                          filterBy="name,hsn_code"
-                          loading={loadingData && productsList.length === 0}
-                          emptyMessage="No products found"
-                          emptyFilterMessage="No matching product found"
-                          appendTo={typeof document !== 'undefined' ? document.body : undefined}
-                          style={{ width: '100%' }}
-                        />
-                      </td>
-                      <td style={{ padding: '8px' }}>
-                        <InputText
-                          value={item.hsn_code || ''}
-                          readOnly
-                          tabIndex={-1}
-                          style={{
-                            width: '100%',
-                            backgroundColor: '#e9ecef',
-                            cursor: 'not-allowed',
-                            color: '#64748b',
-                          }}
-                          placeholder="HSN"
-                        />
-                      </td>
-                      <td style={{ padding: '8px' }}>
-                        {/* Frozen Sqft field */}
-                        <InputText
-                          value={
-                            item.quantity !== undefined && item.quantity !== ''
-                              ? Number(item.quantity).toFixed(2)
-                              : '0.00'
-                          }
-                          readOnly
-                          tabIndex={-1}
-                          style={{
-                            width: '100%',
-                            backgroundColor: '#e9ecef',
-                            cursor: 'not-allowed',
-                            fontWeight: 600,
-                            color: '#1e293b',
-                            textAlign: 'right',
-                          }}
-                          className="tabular-nums product-quantity"
-                          placeholder="0.00"
-                        />
-                      </td>
-                      <td style={{ padding: '8px' }}>
-                        <InputText
-                          type="number"
-                          step="any"
-                          min="0"
-                          value={item.price}
-                          onChange={(e) => handleItemPriceChange(idx, e.target.value)}
-                          onBlur={() => handleItemPriceBlur(idx)}
-                          style={{ width: '100%', textAlign: 'right' }}
-                          className="tabular-nums product-price"
-                          placeholder="0.00"
-                          required
-                        />
-                      </td>
-                      <td style={{ padding: '8px' }}>
-                        {isTotalReadOnly ? (
+                    return (
+                      <tr key={idx} style={{ borderBottom: '1px solid #f1f5f9' }}>
+                        <td style={{ padding: '8px', color: 'var(--text-muted)' }}>{idx + 1}</td>
+                        <td style={{ padding: '8px' }}>
+                          <Dropdown
+                            value={item.product_id}
+                            options={Array.isArray(productsList) ? productsList : []}
+                            optionLabel="name"
+                            optionValue="id"
+                            onChange={(e) => handleProductChange(idx, e.value)}
+                            placeholder={loadingData && productsList.length === 0 ? 'Loading products...' : 'Select stone product...'}
+                            filter
+                            filterBy="name,hsn_code"
+                            loading={loadingData && productsList.length === 0}
+                            emptyMessage="No products found"
+                            emptyFilterMessage="No matching product found"
+                            appendTo={typeof document !== 'undefined' ? document.body : undefined}
+                            style={{ width: '100%' }}
+                          />
+                        </td>
+                        <td style={{ padding: '8px' }}>
+                          <InputText
+                            value={item.hsn_code || ''}
+                            readOnly
+                            tabIndex={-1}
+                            style={{
+                              width: '100%',
+                              backgroundColor: '#e9ecef',
+                              cursor: 'not-allowed',
+                              color: '#64748b',
+                            }}
+                            placeholder="HSN"
+                          />
+                        </td>
+                        <td style={{ padding: '8px' }}>
+                          {/* Frozen Sqft field for Sale bills */}
                           <InputText
                             value={
-                              item.total !== undefined && item.total !== ''
-                                ? Number(item.total).toFixed(2)
+                              item.quantity !== undefined && item.quantity !== ''
+                                ? Number(item.quantity).toFixed(2)
                                 : '0.00'
                             }
                             readOnly
@@ -1057,108 +1169,256 @@ export default function GSTInvoiceFormDialog({
                               color: '#1e293b',
                               textAlign: 'right',
                             }}
-                            className="tabular-nums product-total"
+                            className="tabular-nums product-quantity"
                             placeholder="0.00"
                           />
-                        ) : (
+                        </td>
+                        <td style={{ padding: '8px' }}>
                           <InputText
                             type="number"
                             step="any"
                             min="0"
-                            value={item.total}
-                            onChange={(e) => handleItemTotalChange(idx, e.target.value)}
-                            onBlur={() => handleItemTotalBlur(idx)}
+                            value={item.price}
+                            onChange={(e) => handleItemPriceChange(idx, e.target.value)}
+                            onBlur={() => handleItemPriceBlur(idx)}
                             style={{ width: '100%', textAlign: 'right' }}
-                            className="tabular-nums product-total"
+                            className="tabular-nums product-price"
                             placeholder="0.00"
                             required
                           />
-                        )}
-                      </td>
-                      <td style={{ padding: '8px', textAlign: 'center' }}>
-                        <Button
-                          type="button"
-                          icon="pi pi-trash"
-                          className="p-button-danger p-button-text p-button-sm"
-                          onClick={() => removeItemRow(idx)}
-                          disabled={items.length <= 1}
-                        />
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
+                        </td>
+                        <td style={{ padding: '8px' }}>
+                          {isTotalReadOnly ? (
+                            <InputText
+                              value={
+                                item.total !== undefined && item.total !== ''
+                                  ? Number(item.total).toFixed(2)
+                                  : '0.00'
+                              }
+                              readOnly
+                              tabIndex={-1}
+                              style={{
+                                width: '100%',
+                                backgroundColor: '#e9ecef',
+                                cursor: 'not-allowed',
+                                fontWeight: 600,
+                                color: '#1e293b',
+                                textAlign: 'right',
+                              }}
+                              className="tabular-nums product-total"
+                              placeholder="0.00"
+                            />
+                          ) : (
+                            <InputText
+                              type="number"
+                              step="any"
+                              min="0"
+                              value={item.total}
+                              onChange={(e) => handleItemTotalChange(idx, e.target.value)}
+                              onBlur={() => handleItemTotalBlur(idx)}
+                              style={{ width: '100%', textAlign: 'right' }}
+                              className="tabular-nums product-total"
+                              placeholder="0.00"
+                              required
+                            />
+                          )}
+                        </td>
+                        <td style={{ padding: '8px', textAlign: 'center' }}>
+                          <Button
+                            type="button"
+                            icon="pi pi-trash"
+                            className="p-button-danger p-button-text p-button-sm"
+                            onClick={() => removeItemRow(idx)}
+                            disabled={items.length <= 1}
+                          />
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            ) : (
+              <table
+                id="purchaseProductsTable"
+                style={{ width: '100%', minWidth: '700px', borderCollapse: 'collapse', fontSize: '0.875rem' }}
+              >
+                <thead>
+                  <tr style={{ color: 'var(--text-muted)', textAlign: 'left', borderBottom: '1px solid #e2e8f0' }}>
+                    <th style={{ padding: '8px', width: '35px' }}>#</th>
+                    <th style={{ padding: '8px', minWidth: '220px' }}>Product / Stone Type *</th>
+                    <th style={{ padding: '8px', width: '120px' }}>HSN Code</th>
+                    <th style={{ padding: '8px', width: '140px', textAlign: 'right' }}>Rate (₹/Sq.Ft) *</th>
+                    <th style={{ padding: '8px', width: '140px', textAlign: 'right' }}>Quantity (Sq.Ft) *</th>
+                    <th style={{ padding: '8px', width: '140px', textAlign: 'right' }}>Taxable Amount (₹)</th>
+                    <th style={{ padding: '8px', textAlign: 'center', width: '60px' }}>Action</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {items.map((item, idx) => {
+                    const itemAmount = round2((parseFloat(item.price) || 0) * (parseFloat(item.quantity) || 0));
+                    return (
+                      <tr key={idx} style={{ borderBottom: '1px solid #f1f5f9' }}>
+                        <td style={{ padding: '8px', color: 'var(--text-muted)' }}>{idx + 1}</td>
+                        <td style={{ padding: '8px' }}>
+                          <Dropdown
+                            value={item.product_id}
+                            options={Array.isArray(productsList) ? productsList : []}
+                            optionLabel="name"
+                            optionValue="id"
+                            onChange={(e) => handleProductChange(idx, e.value)}
+                            placeholder={loadingData && productsList.length === 0 ? 'Loading products...' : 'Select stone product...'}
+                            filter
+                            filterBy="name,hsn_code"
+                            loading={loadingData && productsList.length === 0}
+                            emptyMessage="No products found"
+                            emptyFilterMessage="No matching product found"
+                            appendTo={typeof document !== 'undefined' ? document.body : undefined}
+                            style={{ width: '100%' }}
+                          />
+                        </td>
+                        <td style={{ padding: '8px' }}>
+                          <InputText
+                            value={item.hsn_code || ''}
+                            readOnly
+                            tabIndex={-1}
+                            style={{
+                              width: '100%',
+                              backgroundColor: '#e9ecef',
+                              cursor: 'not-allowed',
+                              color: '#64748b',
+                            }}
+                            placeholder="HSN"
+                          />
+                        </td>
+                        <td style={{ padding: '8px' }}>
+                          <InputText
+                            type="number"
+                            step="any"
+                            min="0"
+                            value={item.price}
+                            onChange={(e) => handlePurchasePriceChange(idx, e.target.value)}
+                            style={{ width: '100%', textAlign: 'right' }}
+                            className="tabular-nums product-price"
+                            placeholder="0.00"
+                            required
+                          />
+                        </td>
+                        <td style={{ padding: '8px' }}>
+                          <InputText
+                            type="number"
+                            step="any"
+                            min="0"
+                            value={item.quantity}
+                            onChange={(e) => handlePurchaseQuantityChange(idx, e.target.value)}
+                            style={{ width: '100%', textAlign: 'right' }}
+                            className="tabular-nums product-quantity"
+                            placeholder="1.00"
+                            required
+                          />
+                        </td>
+                        <td style={{ padding: '8px' }}>
+                          <InputText
+                            value={`₹${itemAmount.toFixed(2)}`}
+                            readOnly
+                            tabIndex={-1}
+                            style={{
+                              width: '100%',
+                              backgroundColor: '#e9ecef',
+                              cursor: 'not-allowed',
+                              fontWeight: 600,
+                              color: '#1e293b',
+                              textAlign: 'right',
+                            }}
+                            className="tabular-nums product-total"
+                          />
+                        </td>
+                        <td style={{ padding: '8px', textAlign: 'center' }}>
+                          <Button
+                            type="button"
+                            icon="pi pi-trash"
+                            className="p-button-danger p-button-text p-button-sm"
+                            onClick={() => removeItemRow(idx)}
+                            disabled={items.length <= 1}
+                          />
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            )}
           </div>
         </div>
 
-        {/* Section 3: Amount Details (Reverse Calculation Driver) */}
-        <div style={{ border: '1px solid #e2e8f0', borderRadius: '8px', padding: '16px', background: '#ffffff' }}>
-          <div style={{ fontSize: '0.9rem', fontWeight: 700, color: 'var(--text-main)', marginBottom: '12px' }}>
-            Amount Details
+        {/* Section 3: Amount Details (Sale Invoices only) */}
+        {isSale && (
+          <div style={{ border: '1px solid #e2e8f0', borderRadius: '8px', padding: '16px', background: '#ffffff' }}>
+            <div style={{ fontSize: '0.9rem', fontWeight: 700, color: 'var(--text-main)', marginBottom: '12px' }}>
+              Amount Details
+            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '14px' }}>
+              <div>
+                <label style={{ display: 'block', marginBottom: '6px', fontSize: '0.85rem', fontWeight: 600 }}>
+                  Grand Total (GST Inclusive) <span style={{ color: 'red' }}>*</span>
+                </label>
+                <InputText
+                  type="number"
+                  step="any"
+                  min="0"
+                  value={grandTotal}
+                  onChange={(e) => handleGrandTotalChange(e.target.value)}
+                  onBlur={handleGrandTotalBlur}
+                  placeholder="Enter Grand Total (e.g. 50000)"
+                  style={{ width: '100%', fontWeight: 700, fontSize: '1rem' }}
+                  className="tabular-nums"
+                  required
+                />
+                <small style={{ color: 'var(--text-muted)', fontSize: '0.75rem', marginTop: '4px', display: 'block' }}>
+                  Enter amount, then calculated as Net Amount + GST Amount
+                </small>
+              </div>
+
+              <div>
+                <label style={{ display: 'block', marginBottom: '6px', fontSize: '0.85rem', fontWeight: 600 }}>
+                  Net Amount (Auto-calculated)
+                </label>
+                <InputText
+                  value={`₹${Number(netAmount).toFixed(2)}`}
+                  readOnly
+                  tabIndex={-1}
+                  style={{ width: '100%', backgroundColor: '#e9ecef', cursor: 'not-allowed', fontWeight: 700 }}
+                  className="tabular-nums"
+                />
+                <small style={{ color: 'var(--text-muted)', fontSize: '0.75rem', marginTop: '4px', display: 'block' }}>
+                  Net Amount = Sqft × Price
+                </small>
+              </div>
+
+              <div>
+                <label style={{ display: 'block', marginBottom: '6px', fontSize: '0.85rem', fontWeight: 600 }}>
+                  GST Amount (Auto-calculated)
+                </label>
+                <InputText
+                  value={`₹${Number(gstAmount).toFixed(2)}`}
+                  readOnly
+                  tabIndex={-1}
+                  style={{ width: '100%', backgroundColor: '#e9ecef', cursor: 'not-allowed', fontWeight: 700 }}
+                  className="tabular-nums"
+                />
+                <small style={{ color: 'var(--text-muted)', fontSize: '0.75rem', marginTop: '4px', display: 'block' }}>
+                  Auto-calculated: Net Amount × GST%
+                </small>
+              </div>
+            </div>
+
+            {productAmountError && (
+              <div style={{ color: '#ef4444', fontSize: '0.85rem', fontWeight: 600, marginTop: '10px' }}>
+                <i className="pi pi-exclamation-circle" style={{ marginRight: '6px' }} />
+                {productAmountError}
+              </div>
+            )}
           </div>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '14px' }}>
-            <div>
-              <label style={{ display: 'block', marginBottom: '6px', fontSize: '0.85rem', fontWeight: 600 }}>
-                Grand Total (GST Inclusive) <span style={{ color: 'red' }}>*</span>
-              </label>
-              <InputText
-                type="number"
-                step="any"
-                min="0"
-                value={grandTotal}
-                onChange={(e) => handleGrandTotalChange(e.target.value)}
-                onBlur={handleGrandTotalBlur}
-                placeholder="Enter Grand Total (e.g. 50000)"
-                style={{ width: '100%', fontWeight: 700, fontSize: '1rem' }}
-                className="tabular-nums"
-                required
-              />
-              <small style={{ color: 'var(--text-muted)', fontSize: '0.75rem', marginTop: '4px', display: 'block' }}>
-                Enter amount, then calculated as Net Amount + GST Amount
-              </small>
-            </div>
-
-            <div>
-              <label style={{ display: 'block', marginBottom: '6px', fontSize: '0.85rem', fontWeight: 600 }}>
-                Net Amount (Auto-calculated)
-              </label>
-              <InputText
-                value={`₹${Number(netAmount).toFixed(2)}`}
-                readOnly
-                tabIndex={-1}
-                style={{ width: '100%', backgroundColor: '#e9ecef', cursor: 'not-allowed', fontWeight: 700 }}
-                className="tabular-nums"
-              />
-              <small style={{ color: 'var(--text-muted)', fontSize: '0.75rem', marginTop: '4px', display: 'block' }}>
-                Net Amount = Sqft × Price
-              </small>
-            </div>
-
-            <div>
-              <label style={{ display: 'block', marginBottom: '6px', fontSize: '0.85rem', fontWeight: 600 }}>
-                GST Amount (Auto-calculated)
-              </label>
-              <InputText
-                value={`₹${Number(gstAmount).toFixed(2)}`}
-                readOnly
-                tabIndex={-1}
-                style={{ width: '100%', backgroundColor: '#e9ecef', cursor: 'not-allowed', fontWeight: 700 }}
-                className="tabular-nums"
-              />
-              <small style={{ color: 'var(--text-muted)', fontSize: '0.75rem', marginTop: '4px', display: 'block' }}>
-                Auto-calculated: Net Amount × GST%
-              </small>
-            </div>
-          </div>
-
-          {productAmountError && (
-            <div style={{ color: '#ef4444', fontSize: '0.85rem', fontWeight: 600, marginTop: '10px' }}>
-              <i className="pi pi-exclamation-circle" style={{ marginRight: '6px' }} />
-              {productAmountError}
-            </div>
-          )}
-        </div>
+        )}
 
         {/* Section 4: GST Configuration & Rates */}
         <div
