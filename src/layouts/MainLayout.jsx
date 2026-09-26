@@ -83,6 +83,7 @@ const navGroups = [
           { text: 'GST Sell Bills', path: '/gst-bills' },
           { text: 'Purchase GST Bills', path: '/purchase-gst-bills' },
           { text: 'All GST Invoices', path: '/all-gst-bills' },
+          { text: 'GST Stock & Balance', path: '/gst-stock' },
         ],
       },
     ],

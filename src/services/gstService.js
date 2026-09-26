@@ -124,6 +124,22 @@ export const gstService = {
     const response = await api.delete(`/v1/gst/suppliers/${id}/`);
     return response.data;
   },
+
+  // --- Stock Management ---
+  getCurrentStock: async (params = {}) => {
+    const response = await api.get('/v1/gst/current-stock/', { params });
+    return response.data;
+  },
+
+  getMonthlyStock: async (params = {}) => {
+    const response = await api.get('/v1/gst/monthly-stock/', { params });
+    return response.data;
+  },
+
+  recalculateStock: async () => {
+    const response = await api.post('/v1/gst/current-stock/recalculate/');
+    return response.data;
+  },
 };
 
 export default gstService;
