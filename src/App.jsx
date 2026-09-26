@@ -13,6 +13,7 @@ import GSTCustomersPage from './pages/gst/GSTCustomersPage';
 import GSTSuppliersPage from './pages/gst/GSTSuppliersPage';
 import GSTProductsPage from './pages/gst/GSTProductsPage';
 import GSTStockPage from './pages/gst/GSTStockPage';
+import GSTRatesPage from './pages/gst/GSTRatesPage';
 import SettingsPage from './pages/settings/SettingsPage';
 
 function PlaceholderPage({ title }) {
@@ -54,6 +55,8 @@ export default function App() {
                       <Route path="/products/*" element={<PlaceholderPage title="Products" />} />
                       <Route path="/current-stock/*" element={<GSTStockPage />} />
                       <Route path="/gst-stock/*" element={<GSTStockPage />} />
+                      <Route path="/current-rates/*" element={<GSTRatesPage />} />
+                      <Route path="/gst-rates/*" element={<GSTRatesPage />} />
                       <Route path="/purchase-validation/*" element={<PlaceholderPage title="Purchase Validation" />} />
                       <Route path="/delivery-sectors/*" element={<PlaceholderPage title="Delivery Sectors" />} />
                       <Route path="/delivery-settlements/*" element={<PlaceholderPage title="Delivery Settlements" />} />

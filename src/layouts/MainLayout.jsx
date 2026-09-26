@@ -112,6 +112,7 @@ const navGroups = [
           { text: 'Products Catalog', path: '/products' },
           { text: 'GST Products', path: '/gst-products' },
           { text: 'Current Stock', path: '/current-stock' },
+          { text: 'Product Rates', path: '/current-rates' },
         ],
       },
       {

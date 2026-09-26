@@ -140,6 +140,22 @@ export const gstService = {
     const response = await api.post('/v1/gst/current-stock/recalculate/');
     return response.data;
   },
+
+  // --- Rate Management ---
+  getCurrentRates: async (params = {}) => {
+    const response = await api.get('/v1/gst/current-rates/', { params });
+    return response.data;
+  },
+
+  getMonthlyRates: async (params = {}) => {
+    const response = await api.get('/v1/gst/monthly-rates/', { params });
+    return response.data;
+  },
+
+  recalculateRates: async () => {
+    const response = await api.post('/v1/gst/current-rates/recalculate/');
+    return response.data;
+  },
 };
 
 export default gstService;
