@@ -182,27 +182,37 @@ export default function GSTInvoiceDetailDialog({ visible, invoice, onHide, onEdi
             <div style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: '8px' }}>
               Invoice & Payment Details
             </div>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', fontSize: '0.875rem' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px 12px', fontSize: '0.875rem' }}>
               <div>
-                <span style={{ color: 'var(--text-muted)' }}>Invoice No:</span>{' '}
-                <strong className="tabular-nums">{invoice.invoice_no}</strong>
+                <div style={{ color: 'var(--text-muted)', fontSize: '0.8rem', marginBottom: '2px' }}>Invoice No:</div>
+                <strong className="tabular-nums" style={{ color: 'var(--text-main)', whiteSpace: 'nowrap' }}>
+                  {invoice.invoice_no}
+                </strong>
               </div>
               <div>
-                <span style={{ color: 'var(--text-muted)' }}>Date:</span>{' '}
-                <strong className="tabular-nums">{formatDate(invoice.invoice_date)}</strong>
+                <div style={{ color: 'var(--text-muted)', fontSize: '0.8rem', marginBottom: '2px' }}>Date:</div>
+                <strong className="tabular-nums" style={{ color: 'var(--text-main)', whiteSpace: 'nowrap' }}>
+                  {formatDate(invoice.invoice_date)}
+                </strong>
               </div>
               <div>
-                <span style={{ color: 'var(--text-muted)' }}>GST Rate:</span>{' '}
-                <strong className="tabular-nums">{invoice.gst_rate_percent || 18}%</strong>
+                <div style={{ color: 'var(--text-muted)', fontSize: '0.8rem', marginBottom: '2px' }}>GST Rate:</div>
+                <strong className="tabular-nums" style={{ color: 'var(--text-main)' }}>
+                  {invoice.gst_rate_percent || 18}%
+                </strong>
               </div>
               <div>
-                <span style={{ color: 'var(--text-muted)' }}>Payment Mode:</span>{' '}
-                <strong style={{ textTransform: 'capitalize' }}>{invoice.payment_method || 'Cheque'}</strong>
+                <div style={{ color: 'var(--text-muted)', fontSize: '0.8rem', marginBottom: '2px' }}>Payment Mode:</div>
+                <strong style={{ textTransform: 'capitalize', color: 'var(--text-main)' }}>
+                  {invoice.payment_method || 'Cheque'}
+                </strong>
               </div>
               {invoice.cheque_no && (
                 <div style={{ gridColumn: 'span 2' }}>
-                  <span style={{ color: 'var(--text-muted)' }}>Cheque/Ref No:</span>{' '}
-                  <strong className="tabular-nums">{invoice.cheque_no}</strong>
+                  <div style={{ color: 'var(--text-muted)', fontSize: '0.8rem', marginBottom: '2px' }}>Cheque/Ref No:</div>
+                  <strong className="tabular-nums" style={{ color: 'var(--text-main)' }}>
+                    {invoice.cheque_no}
+                  </strong>
                 </div>
               )}
             </div>
