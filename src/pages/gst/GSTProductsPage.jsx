@@ -3,12 +3,15 @@ import { DataTable } from 'primereact/datatable';
 import { Column } from 'primereact/column';
 import { Button } from 'primereact/button';
 import { InputText } from 'primereact/inputtext';
+import { InputNumber } from 'primereact/inputnumber';
 import { Dropdown } from 'primereact/dropdown';
 import { Dialog } from 'primereact/dialog';
 import { Toast } from 'primereact/toast';
 import { Tag } from 'primereact/tag';
+import { useAuth } from '../../context/AuthContext';
 import gstService from '../../services/gstService';
 import useDebounce from '../../hooks/useDebounce';
+import { formatINR } from '../../utils/formatters';
 
 const PRODUCT_TYPES = [
   { label: 'Granite', value: 'granite' },
@@ -25,6 +28,9 @@ const GST_RATES = [
 ];
 
 export default function GSTProductsPage() {
+  const { user } = useAuth();
+  const isSuperAdmin = Boolean(user?.is_super_admin);
+
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
@@ -41,6 +47,7 @@ export default function GSTProductsPage() {
   const [hsnCode, setHsnCode] = useState('6802');
   const [gstRate, setGstRate] = useState(18);
   const [productType, setProductType] = useState('granite');
+  const [openingStock, setOpeningStock] = useState(0);
   const [submitting, setSubmitting] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
@@ -81,6 +88,7 @@ export default function GSTProductsPage() {
     setHsnCode('6802');
     setGstRate(18);
     setProductType('granite');
+    setOpeningStock(0);
     setErrorMsg('');
     setDialogVisible(true);
   };
@@ -92,6 +100,7 @@ export default function GSTProductsPage() {
     setHsnCode(prod.hsn_code || '');
     setGstRate(prod.gst_rate || 18);
     setProductType(prod.type || 'granite');
+    setOpeningStock(prod.opening_stock !== undefined && prod.opening_stock !== null ? Number(prod.opening_stock) : 0);
     setErrorMsg('');
     setDialogVisible(true);
   };
@@ -118,6 +127,7 @@ export default function GSTProductsPage() {
         hsn_code: hsnCode.trim(),
         gst_rate: gstRate,
         type: productType,
+        opening_stock: openingStock,
       };
 
       if (selectedProduct) {
@@ -346,6 +356,17 @@ export default function GSTProductsPage() {
             body={(row) => <span className="tabular-nums">{row.gst_rate}%</span>}
             style={{ width: '120px' }}
           />
+          <Column
+            field="opening_stock"
+            header="Opening Stock"
+            sortable
+            body={(row) => (
+              <span className="tabular-nums" style={{ fontWeight: 600, color: 'var(--text-main)' }}>
+                {formatINR(row.opening_stock || 0)}
+              </span>
+            )}
+            style={{ width: '140px', textAlign: 'right' }}
+          />
           <Column body={actionBodyTemplate} style={{ width: '110px', textAlign: 'right' }} />
         </DataTable>
       </div>
@@ -419,6 +440,33 @@ export default function GSTProductsPage() {
                 style={{ width: '100%' }}
               />
             </div>
+          </div>
+
+          <div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
+              <label style={{ fontSize: '0.85rem', fontWeight: 600 }}>
+                Initial Opening Stock (Qty / Sq.Ft)
+              </label>
+              {selectedProduct && !isSuperAdmin && (
+                <Tag severity="secondary" value="Locked (Super Admin Only)" style={{ fontSize: '0.7rem' }} />
+              )}
+            </div>
+            <InputNumber
+              value={openingStock}
+              onValueChange={(e) => setOpeningStock(e.value ?? 0)}
+              minFractionDigits={2}
+              maxFractionDigits={2}
+              min={0}
+              placeholder="0.00"
+              disabled={Boolean(selectedProduct && !isSuperAdmin)}
+              style={{ width: '100%' }}
+              inputStyle={{ width: '100%' }}
+            />
+            {selectedProduct && !isSuperAdmin && (
+              <small style={{ color: 'var(--text-muted)', display: 'block', marginTop: '4px', fontSize: '0.75rem' }}>
+                Only super admin can modify initial opening stock balance.
+              </small>
+            )}
           </div>
         </form>
       </Dialog>
