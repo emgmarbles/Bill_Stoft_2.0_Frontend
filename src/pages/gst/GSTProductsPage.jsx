@@ -48,6 +48,7 @@ export default function GSTProductsPage() {
   const [gstRate, setGstRate] = useState(18);
   const [productType, setProductType] = useState('granite');
   const [openingStock, setOpeningStock] = useState(0);
+  const [openingRate, setOpeningRate] = useState(0);
   const [submitting, setSubmitting] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
@@ -89,6 +90,7 @@ export default function GSTProductsPage() {
     setGstRate(18);
     setProductType('granite');
     setOpeningStock(0);
+    setOpeningRate(0);
     setErrorMsg('');
     setDialogVisible(true);
   };
@@ -101,6 +103,7 @@ export default function GSTProductsPage() {
     setGstRate(prod.gst_rate || 18);
     setProductType(prod.type || 'granite');
     setOpeningStock(prod.opening_stock !== undefined && prod.opening_stock !== null ? Number(prod.opening_stock) : 0);
+    setOpeningRate(prod.opening_rate !== undefined && prod.opening_rate !== null ? Number(prod.opening_rate) : 0);
     setErrorMsg('');
     setDialogVisible(true);
   };
@@ -128,6 +131,7 @@ export default function GSTProductsPage() {
         gst_rate: gstRate,
         type: productType,
         opening_stock: openingStock,
+        opening_rate: openingRate,
       };
 
       if (selectedProduct) {
@@ -365,7 +369,18 @@ export default function GSTProductsPage() {
                 {formatINR(row.opening_stock || 0)}
               </span>
             )}
-            style={{ width: '140px', textAlign: 'right' }}
+            style={{ width: '130px', textAlign: 'right' }}
+          />
+          <Column
+            field="opening_rate"
+            header="Opening Rate"
+            sortable
+            body={(row) => (
+              <span className="tabular-nums" style={{ fontWeight: 600, color: '#16a34a' }}>
+                ₹{formatINR(row.opening_rate || 0)}
+              </span>
+            )}
+            style={{ width: '130px', textAlign: 'right' }}
           />
           <Column body={actionBodyTemplate} style={{ width: '110px', textAlign: 'right' }} />
         </DataTable>
@@ -442,32 +457,59 @@ export default function GSTProductsPage() {
             </div>
           </div>
 
-          <div>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
-              <label style={{ fontSize: '0.85rem', fontWeight: 600 }}>
-                Initial Opening Stock (Qty / Sq.Ft)
-              </label>
-              {selectedProduct && !isSuperAdmin && (
-                <Tag severity="secondary" value="Locked (Super Admin Only)" style={{ fontSize: '0.7rem' }} />
-              )}
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+            <div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
+                <label style={{ fontSize: '0.85rem', fontWeight: 600 }}>
+                  Opening Stock
+                </label>
+                {selectedProduct && !isSuperAdmin && (
+                  <Tag severity="secondary" value="Locked" style={{ fontSize: '0.65rem' }} />
+                )}
+              </div>
+              <InputNumber
+                value={openingStock}
+                onValueChange={(e) => setOpeningStock(e.value ?? 0)}
+                minFractionDigits={2}
+                maxFractionDigits={2}
+                min={0}
+                placeholder="0.00"
+                disabled={Boolean(selectedProduct && !isSuperAdmin)}
+                style={{ width: '100%' }}
+                inputStyle={{ width: '100%' }}
+              />
             </div>
-            <InputNumber
-              value={openingStock}
-              onValueChange={(e) => setOpeningStock(e.value ?? 0)}
-              minFractionDigits={2}
-              maxFractionDigits={2}
-              min={0}
-              placeholder="0.00"
-              disabled={Boolean(selectedProduct && !isSuperAdmin)}
-              style={{ width: '100%' }}
-              inputStyle={{ width: '100%' }}
-            />
-            {selectedProduct && !isSuperAdmin && (
-              <small style={{ color: 'var(--text-muted)', display: 'block', marginTop: '4px', fontSize: '0.75rem' }}>
-                Only super admin can modify initial opening stock balance.
-              </small>
-            )}
+
+            <div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
+                <label style={{ fontSize: '0.85rem', fontWeight: 600 }}>
+                  Opening Rate (₹)
+                </label>
+                {selectedProduct && !isSuperAdmin && (
+                  <Tag severity="secondary" value="Locked" style={{ fontSize: '0.65rem' }} />
+                )}
+              </div>
+              <InputNumber
+                value={openingRate}
+                onValueChange={(e) => setOpeningRate(e.value ?? 0)}
+                minFractionDigits={2}
+                maxFractionDigits={2}
+                min={0}
+                placeholder="0.00"
+                mode="currency"
+                currency="INR"
+                locale="en-IN"
+                disabled={Boolean(selectedProduct && !isSuperAdmin)}
+                style={{ width: '100%' }}
+                inputStyle={{ width: '100%' }}
+              />
+            </div>
           </div>
+          {selectedProduct && !isSuperAdmin && (
+            <small style={{ color: 'var(--text-muted)', display: 'block', fontSize: '0.75rem', marginTop: '-6px' }}>
+              Only super admin can modify initial opening stock and opening rate.
+            </small>
+          )}
         </form>
       </Dialog>
 
