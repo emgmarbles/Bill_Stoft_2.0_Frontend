@@ -6,7 +6,7 @@ const getBaseURL = () => {
   }
   const host = typeof window !== 'undefined' && window.location.hostname ? window.location.hostname : '127.0.0.1';
   const resolvedHost = host === 'localhost' ? '127.0.0.1' : host;
-  return `http://${resolvedHost}:8000/api`;
+  return `http://${resolvedHost}:8010/api`;
 };
 
 const api = axios.create({
