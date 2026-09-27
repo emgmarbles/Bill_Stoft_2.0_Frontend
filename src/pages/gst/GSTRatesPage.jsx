@@ -7,9 +7,15 @@ import { Dropdown } from 'primereact/dropdown';
 import { Tag } from 'primereact/tag';
 import { Toast } from 'primereact/toast';
 import { TabView, TabPanel } from 'primereact/tabview';
+import { SelectButton } from 'primereact/selectbutton';
 import gstService from '../../services/gstService';
 import useDebounce from '../../hooks/useDebounce';
 import { formatINR, formatDate } from '../../utils/formatters';
+
+const VIEW_MODE_OPTIONS = [
+  { label: 'By Product', value: 'product' },
+  { label: 'By Stone Type', value: 'type' },
+];
 
 const PRODUCT_TYPES = [
   { label: 'All Stone Types', value: null },
@@ -48,12 +54,20 @@ export default function GSTRatesPage() {
   const [activeIndex, setActiveIndex] = useState(0);
   const toast = useRef(null);
 
+  // View mode toggles
+  const [currentRateMode, setCurrentRateMode] = useState('product');
+  const [monthlyRateMode, setMonthlyRateMode] = useState('product');
+
   // --- Current Rates State ---
   const [currentRates, setCurrentRates] = useState([]);
   const [loadingCurrent, setLoadingCurrent] = useState(true);
   const [searchCurrent, setSearchCurrent] = useState('');
   const debouncedSearchCurrent = useDebounce(searchCurrent, 350);
   const [typeFilter, setTypeFilter] = useState(null);
+
+  // --- Current Rates State (By Stone Type) ---
+  const [currentRatesByType, setCurrentRatesByType] = useState([]);
+  const [loadingCurrentType, setLoadingCurrentType] = useState(false);
 
   // --- Monthly Rates State ---
   const [monthlyRates, setMonthlyRates] = useState([]);
@@ -64,6 +78,13 @@ export default function GSTRatesPage() {
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
   const [selectedProduct, setSelectedProduct] = useState(null);
   const [productsList, setProductsList] = useState([]);
+
+  // --- Monthly Rates State (By Stone Type) ---
+  const [monthlyRatesByType, setMonthlyRatesByType] = useState([]);
+  const [loadingMonthlyType, setLoadingMonthlyType] = useState(false);
+  const [selectedMonthType, setSelectedMonthType] = useState(new Date().getMonth() + 1);
+  const [selectedYearType, setSelectedYearType] = useState(new Date().getFullYear());
+  const [selectedStoneType, setSelectedStoneType] = useState(null);
 
   // Recalculating state
   const [recalculating, setRecalculating] = useState(false);
@@ -79,7 +100,7 @@ export default function GSTRatesPage() {
       .catch((err) => console.error('Failed to load products for rates filter', err));
   }, []);
 
-  // Fetch Current Rates
+  // Fetch Current Rates (By Product)
   const fetchCurrentRates = useCallback(async () => {
     setLoadingCurrent(true);
     try {
@@ -103,7 +124,27 @@ export default function GSTRatesPage() {
     }
   }, [debouncedSearchCurrent, typeFilter]);
 
-  // Fetch Monthly Rates
+  // Fetch Current Rates (By Stone Type)
+  const fetchCurrentRatesByType = useCallback(async () => {
+    setLoadingCurrentType(true);
+    try {
+      const res = await gstService.getCurrentRatesByType();
+      const list = Array.isArray(res) ? res : res?.results || [];
+      setCurrentRatesByType(list);
+    } catch (err) {
+      console.error('Failed to fetch current rates by stone type', err);
+      toast.current?.show({
+        severity: 'error',
+        summary: 'Error',
+        detail: 'Failed to load current rates by stone type.',
+        life: 4000,
+      });
+    } finally {
+      setLoadingCurrentType(false);
+    }
+  }, []);
+
+  // Fetch Monthly Rates (By Product)
   const fetchMonthlyRates = useCallback(async () => {
     setLoadingMonthly(true);
     try {
@@ -129,13 +170,46 @@ export default function GSTRatesPage() {
     }
   }, [debouncedSearchMonthly, selectedMonth, selectedYear, selectedProduct]);
 
+  // Fetch Monthly Rates (By Stone Type)
+  const fetchMonthlyRatesByType = useCallback(async () => {
+    setLoadingMonthlyType(true);
+    try {
+      const params = {
+        ...(selectedMonthType && { month: selectedMonthType }),
+        ...(selectedYearType && { year: selectedYearType }),
+        ...(selectedStoneType && { product_type: selectedStoneType }),
+      };
+      const res = await gstService.getMonthlyRatesByType(params);
+      const list = Array.isArray(res) ? res : res?.results || [];
+      setMonthlyRatesByType(list);
+    } catch (err) {
+      console.error('Failed to fetch monthly rates by stone type', err);
+      toast.current?.show({
+        severity: 'error',
+        summary: 'Error',
+        detail: 'Failed to load monthly rates history by stone type.',
+        life: 4000,
+      });
+    } finally {
+      setLoadingMonthlyType(false);
+    }
+  }, [selectedMonthType, selectedYearType, selectedStoneType]);
+
   useEffect(() => {
     fetchCurrentRates();
   }, [fetchCurrentRates]);
 
   useEffect(() => {
+    fetchCurrentRatesByType();
+  }, [fetchCurrentRatesByType]);
+
+  useEffect(() => {
     fetchMonthlyRates();
   }, [fetchMonthlyRates]);
+
+  useEffect(() => {
+    fetchMonthlyRatesByType();
+  }, [fetchMonthlyRatesByType]);
 
   // Trigger Recalculation
   const handleRecalculate = async () => {
@@ -149,7 +223,9 @@ export default function GSTRatesPage() {
         life: 4000,
       });
       fetchCurrentRates();
+      fetchCurrentRatesByType();
       fetchMonthlyRates();
+      fetchMonthlyRatesByType();
     } catch (err) {
       console.error('Failed to recalculate rates', err);
       toast.current?.show({
@@ -164,14 +240,15 @@ export default function GSTRatesPage() {
   };
 
   // KPIs
-  const totalProducts = currentRates.length;
+  const activeRateList = currentRateMode === 'product' ? currentRates : currentRatesByType;
+  const totalItemCount = activeRateList.length;
   const avgPurchaseOverall =
-    totalProducts > 0
-      ? currentRates.reduce((acc, r) => acc + (parseFloat(r.avg_purchase_rate) || 0), 0) / totalProducts
+    totalItemCount > 0
+      ? activeRateList.reduce((acc, r) => acc + (parseFloat(r.avg_purchase_rate) || 0), 0) / totalItemCount
       : 0;
   const avgSaleOverall =
-    totalProducts > 0
-      ? currentRates.reduce((acc, r) => acc + (parseFloat(r.avg_sale_rate) || 0), 0) / totalProducts
+    totalItemCount > 0
+      ? activeRateList.reduce((acc, r) => acc + (parseFloat(r.avg_sale_rate) || 0), 0) / totalItemCount
       : 0;
 
   return (
@@ -314,7 +391,7 @@ export default function GSTRatesPage() {
         >
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <span style={{ fontSize: '0.8125rem', fontWeight: 600, color: 'var(--text-muted)' }}>
-              PRODUCTS TRACKED
+              {currentRateMode === 'product' ? 'PRODUCTS TRACKED' : 'STONE TYPES TRACKED'}
             </span>
             <span
               style={{
@@ -332,10 +409,10 @@ export default function GSTRatesPage() {
             </span>
           </div>
           <div style={{ fontSize: '1.5rem', fontWeight: 700, color: 'var(--text-main)', marginTop: '8px' }}>
-            {totalProducts}
+            {totalItemCount}
           </div>
           <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '4px' }}>
-            Catalog products with active rate metrics
+            {currentRateMode === 'product' ? 'Catalog products with active rate metrics' : 'Stone categories with active rate metrics'}
           </div>
         </div>
       </div>
@@ -365,179 +442,339 @@ export default function GSTRatesPage() {
                   marginBottom: '16px',
                 }}
               >
-                <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', flex: 1 }}>
-                  <span className="p-input-icon-left" style={{ width: '280px', maxWidth: '100%' }}>
-                    <i className="pi pi-search" />
-                    <InputText
-                      value={searchCurrent}
-                      onChange={(e) => setSearchCurrent(e.target.value)}
-                      placeholder="Search product name or HSN..."
-                      style={{ width: '100%' }}
-                    />
-                  </span>
-                  <Dropdown
-                    value={typeFilter}
-                    options={PRODUCT_TYPES}
-                    onChange={(e) => setTypeFilter(e.value)}
-                    placeholder="All Stone Types"
-                    style={{ width: '180px' }}
+                <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', alignItems: 'center' }}>
+                  <SelectButton
+                    value={currentRateMode}
+                    options={VIEW_MODE_OPTIONS}
+                    onChange={(e) => e.value && setCurrentRateMode(e.value)}
+                    unselectable={false}
                   />
+
+                  {currentRateMode === 'product' && (
+                    <>
+                      <span className="p-input-icon-left" style={{ width: '280px', maxWidth: '100%' }}>
+                        <i className="pi pi-search" />
+                        <InputText
+                          value={searchCurrent}
+                          onChange={(e) => setSearchCurrent(e.target.value)}
+                          placeholder="Search product name or HSN..."
+                          style={{ width: '100%' }}
+                        />
+                      </span>
+                      <Dropdown
+                        value={typeFilter}
+                        options={PRODUCT_TYPES}
+                        onChange={(e) => setTypeFilter(e.value)}
+                        placeholder="All Stone Types"
+                        style={{ width: '180px' }}
+                      />
+                    </>
+                  )}
                 </div>
               </div>
 
               {/* Table */}
-              <DataTable
-                value={currentRates}
-                loading={loadingCurrent}
-                paginator
-                rows={15}
-                rowsPerPageOptions={[10, 15, 25, 50]}
-                emptyMessage="No current product rates found."
-                className="p-datatable-sm"
-                responsiveLayout="scroll"
-              >
-                <Column
-                  header="#"
-                  body={(_, options) => options.rowIndex + 1}
-                  style={{ width: '50px', textAlign: 'center' }}
-                />
-                <Column
-                  field="product.name"
-                  header="Product Name"
-                  body={(row) => (
-                    <div>
-                      <div style={{ fontWeight: 600, color: 'var(--text-main)' }}>{row.product?.name}</div>
-                      <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
-                        HSN: {row.product?.hsn_code || '-'}
+              {currentRateMode === 'product' ? (
+                <DataTable
+                  value={currentRates}
+                  loading={loadingCurrent}
+                  paginator
+                  rows={15}
+                  rowsPerPageOptions={[10, 15, 25, 50]}
+                  emptyMessage="No current product rates found."
+                  className="p-datatable-sm"
+                  responsiveLayout="scroll"
+                >
+                  <Column
+                    header="#"
+                    body={(_, options) => options.rowIndex + 1}
+                    style={{ width: '50px', textAlign: 'center' }}
+                  />
+                  <Column
+                    field="product.name"
+                    header="Product Name"
+                    body={(row) => (
+                      <div>
+                        <div style={{ fontWeight: 600, color: 'var(--text-main)' }}>{row.product?.name}</div>
+                        <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+                          HSN: {row.product?.hsn_code || '-'}
+                        </div>
                       </div>
-                    </div>
-                  )}
-                  sortable
-                />
-                <Column
-                  field="product.type_display"
-                  header="Stone Type"
-                  body={(row) => (
-                    <Tag
-                      value={row.product?.type_display || row.product?.type || '-'}
-                      severity="info"
-                      style={{ fontSize: '0.75rem', textTransform: 'capitalize' }}
-                    />
-                  )}
-                  style={{ width: '130px' }}
-                />
-                <Column
-                  field="avg_purchase_rate"
-                  header="Avg Buy Rate"
-                  body={(row) => {
-                    const buy = parseFloat(row.avg_purchase_rate) || 0;
-                    return (
-                      <span className="tabular-nums font-semibold" style={{ color: buy > 0 ? '#16a34a' : 'var(--text-muted)' }}>
-                        {buy > 0 ? `₹${formatINR(buy)}` : '₹0.00'}
-                      </span>
-                    );
-                  }}
-                  style={{ textAlign: 'right', width: '140px' }}
-                  sortable
-                />
-                <Column
-                  field="last_purchase_rate"
-                  header="Last Buy Rate"
-                  body={(row) => {
-                    const lastBuy = parseFloat(row.last_purchase_rate) || 0;
-                    return (
-                      <span className="tabular-nums" style={{ color: 'var(--text-muted)' }}>
-                        {lastBuy > 0 ? `₹${formatINR(lastBuy)}` : '-'}
-                      </span>
-                    );
-                  }}
-                  style={{ textAlign: 'right', width: '130px' }}
-                />
-                <Column
-                  field="avg_sale_rate"
-                  header="Avg Sell Rate"
-                  body={(row) => {
-                    const sell = parseFloat(row.avg_sale_rate) || 0;
-                    return (
-                      <span className="tabular-nums font-semibold" style={{ color: sell > 0 ? '#2563eb' : 'var(--text-muted)' }}>
-                        {sell > 0 ? `₹${formatINR(sell)}` : '₹0.00'}
-                      </span>
-                    );
-                  }}
-                  style={{ textAlign: 'right', width: '140px' }}
-                  sortable
-                />
-                <Column
-                  field="last_sale_rate"
-                  header="Last Sell Rate"
-                  body={(row) => {
-                    const lastSell = parseFloat(row.last_sale_rate) || 0;
-                    return (
-                      <span className="tabular-nums" style={{ color: 'var(--text-muted)' }}>
-                        {lastSell > 0 ? `₹${formatINR(lastSell)}` : '-'}
-                      </span>
-                    );
-                  }}
-                  style={{ textAlign: 'right', width: '130px' }}
-                />
-                <Column
-                  header="Rate Spread"
-                  body={(row) => {
-                    const buy = parseFloat(row.avg_purchase_rate) || 0;
-                    const sell = parseFloat(row.avg_sale_rate) || 0;
-                    if (buy > 0 && sell > 0) {
-                      const spread = sell - buy;
+                    )}
+                    sortable
+                  />
+                  <Column
+                    field="product.type_display"
+                    header="Stone Type"
+                    body={(row) => (
+                      <Tag
+                        value={row.product?.type_display || row.product?.type || '-'}
+                        severity="info"
+                        style={{ fontSize: '0.75rem', textTransform: 'capitalize' }}
+                      />
+                    )}
+                    style={{ width: '130px' }}
+                  />
+                  <Column
+                    field="avg_purchase_rate"
+                    header="Avg Buy Rate"
+                    body={(row) => {
+                      const buy = parseFloat(row.avg_purchase_rate) || 0;
                       return (
-                        <span
-                          className="tabular-nums font-bold"
-                          style={{ color: spread >= 0 ? '#16a34a' : '#dc2626' }}
-                        >
-                          {spread >= 0 ? `+₹${formatINR(spread)}` : `-₹${formatINR(Math.abs(spread))}`}
+                        <span className="tabular-nums font-semibold" style={{ color: buy > 0 ? '#16a34a' : 'var(--text-muted)' }}>
+                          {buy > 0 ? `₹${formatINR(buy)}` : '₹0.00'}
                         </span>
                       );
-                    }
-                    return <span style={{ color: 'var(--text-muted)' }}>-</span>;
-                  }}
-                  style={{ textAlign: 'right', width: '130px' }}
-                />
-                <Column
-                  header="Last Activity"
-                  body={(row) => {
-                    if (!row.last_trasction_id) {
-                      return <span style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}>None</span>;
-                    }
-                    const isBuy = row.transaction_type === 'purchase';
-                    return (
-                      <div>
-                        <Tag
-                          value={isBuy ? 'Purchase' : 'Sale'}
-                          severity={isBuy ? 'success' : 'info'}
-                          style={{ fontSize: '0.7rem' }}
-                        />
-                        <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginLeft: '6px' }}>
-                          #{row.last_invoice_no || row.last_trasction_id}
+                    }}
+                    style={{ textAlign: 'right', width: '140px' }}
+                    sortable
+                  />
+                  <Column
+                    field="last_purchase_rate"
+                    header="Last Buy Rate"
+                    body={(row) => {
+                      const lastBuy = parseFloat(row.last_purchase_rate) || 0;
+                      return (
+                        <span className="tabular-nums" style={{ color: 'var(--text-muted)' }}>
+                          {lastBuy > 0 ? `₹${formatINR(lastBuy)}` : '-'}
                         </span>
-                        {row.last_invoice_date && (
-                          <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>
-                            {formatDate(row.last_invoice_date)}
-                          </div>
-                        )}
-                      </div>
-                    );
-                  }}
-                  style={{ width: '180px' }}
-                />
-                <Column
-                  field="updated_at"
-                  header="Last Synchronized"
-                  body={(row) => (
-                    <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
-                      {formatDate(row.updated_at)}
-                    </span>
-                  )}
-                  style={{ width: '150px' }}
-                />
-              </DataTable>
+                      );
+                    }}
+                    style={{ textAlign: 'right', width: '130px' }}
+                  />
+                  <Column
+                    field="avg_sale_rate"
+                    header="Avg Sell Rate"
+                    body={(row) => {
+                      const sell = parseFloat(row.avg_sale_rate) || 0;
+                      return (
+                        <span className="tabular-nums font-semibold" style={{ color: sell > 0 ? '#2563eb' : 'var(--text-muted)' }}>
+                          {sell > 0 ? `₹${formatINR(sell)}` : '₹0.00'}
+                        </span>
+                      );
+                    }}
+                    style={{ textAlign: 'right', width: '140px' }}
+                    sortable
+                  />
+                  <Column
+                    field="last_sale_rate"
+                    header="Last Sell Rate"
+                    body={(row) => {
+                      const lastSell = parseFloat(row.last_sale_rate) || 0;
+                      return (
+                        <span className="tabular-nums" style={{ color: 'var(--text-muted)' }}>
+                          {lastSell > 0 ? `₹${formatINR(lastSell)}` : '-'}
+                        </span>
+                      );
+                    }}
+                    style={{ textAlign: 'right', width: '130px' }}
+                  />
+                  <Column
+                    header="Rate Spread"
+                    body={(row) => {
+                      const buy = parseFloat(row.avg_purchase_rate) || 0;
+                      const sell = parseFloat(row.avg_sale_rate) || 0;
+                      if (buy > 0 && sell > 0) {
+                        const spread = sell - buy;
+                        return (
+                          <span
+                            className="tabular-nums font-bold"
+                            style={{ color: spread >= 0 ? '#16a34a' : '#dc2626' }}
+                          >
+                            {spread >= 0 ? `+₹${formatINR(spread)}` : `-₹${formatINR(Math.abs(spread))}`}
+                          </span>
+                        );
+                      }
+                      return <span style={{ color: 'var(--text-muted)' }}>-</span>;
+                    }}
+                    style={{ textAlign: 'right', width: '130px' }}
+                  />
+                  <Column
+                    header="Last Activity"
+                    body={(row) => {
+                      if (!row.last_trasction_id) {
+                        return <span style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}>None</span>;
+                      }
+                      const isBuy = row.transaction_type === 'purchase';
+                      return (
+                        <div>
+                          <Tag
+                            value={isBuy ? 'Purchase' : 'Sale'}
+                            severity={isBuy ? 'success' : 'info'}
+                            style={{ fontSize: '0.7rem' }}
+                          />
+                          <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginLeft: '6px' }}>
+                            #{row.last_invoice_no || row.last_trasction_id}
+                          </span>
+                          {row.last_invoice_date && (
+                            <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>
+                              {formatDate(row.last_invoice_date)}
+                            </div>
+                          )}
+                        </div>
+                      );
+                    }}
+                    style={{ width: '180px' }}
+                  />
+                  <Column
+                    field="updated_at"
+                    header="Last Synchronized"
+                    body={(row) => (
+                      <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
+                        {formatDate(row.updated_at)}
+                      </span>
+                    )}
+                    style={{ width: '150px' }}
+                  />
+                </DataTable>
+              ) : (
+                <DataTable
+                  value={currentRatesByType}
+                  loading={loadingCurrentType}
+                  paginator
+                  rows={15}
+                  rowsPerPageOptions={[10, 15, 25, 50]}
+                  emptyMessage="No current rates found for stone types."
+                  className="p-datatable-sm"
+                  responsiveLayout="scroll"
+                >
+                  <Column
+                    header="#"
+                    body={(_, options) => options.rowIndex + 1}
+                    style={{ width: '50px', textAlign: 'center' }}
+                  />
+                  <Column
+                    field="product_type_display"
+                    header="Stone Type"
+                    body={(row) => (
+                      <Tag
+                        value={row.product_type_display || row.product_type?.toUpperCase()}
+                        style={{
+                          background: '#f1f5f9',
+                          color: '#334155',
+                          border: '1px solid #cbd5e1',
+                          fontSize: '0.8rem',
+                          fontWeight: 700,
+                          padding: '4px 8px',
+                        }}
+                      />
+                    )}
+                    sortable
+                    style={{ width: '180px' }}
+                  />
+                  <Column
+                    field="avg_purchase_rate"
+                    header="Avg Buy Rate"
+                    body={(row) => {
+                      const buy = parseFloat(row.avg_purchase_rate) || 0;
+                      return (
+                        <span className="tabular-nums font-semibold" style={{ color: buy > 0 ? '#16a34a' : 'var(--text-muted)' }}>
+                          {buy > 0 ? `₹${formatINR(buy)}` : '₹0.00'}
+                        </span>
+                      );
+                    }}
+                    style={{ textAlign: 'right', width: '140px' }}
+                    sortable
+                  />
+                  <Column
+                    field="last_purchase_rate"
+                    header="Last Buy Rate"
+                    body={(row) => {
+                      const lastBuy = parseFloat(row.last_purchase_rate) || 0;
+                      return (
+                        <span className="tabular-nums" style={{ color: 'var(--text-muted)' }}>
+                          {lastBuy > 0 ? `₹${formatINR(lastBuy)}` : '-'}
+                        </span>
+                      );
+                    }}
+                    style={{ textAlign: 'right', width: '130px' }}
+                  />
+                  <Column
+                    field="avg_sale_rate"
+                    header="Avg Sell Rate"
+                    body={(row) => {
+                      const sell = parseFloat(row.avg_sale_rate) || 0;
+                      return (
+                        <span className="tabular-nums font-semibold" style={{ color: sell > 0 ? '#2563eb' : 'var(--text-muted)' }}>
+                          {sell > 0 ? `₹${formatINR(sell)}` : '₹0.00'}
+                        </span>
+                      );
+                    }}
+                    style={{ textAlign: 'right', width: '140px' }}
+                    sortable
+                  />
+                  <Column
+                    field="last_sale_rate"
+                    header="Last Sell Rate"
+                    body={(row) => {
+                      const lastSell = parseFloat(row.last_sale_rate) || 0;
+                      return (
+                        <span className="tabular-nums" style={{ color: 'var(--text-muted)' }}>
+                          {lastSell > 0 ? `₹${formatINR(lastSell)}` : '-'}
+                        </span>
+                      );
+                    }}
+                    style={{ textAlign: 'right', width: '130px' }}
+                  />
+                  <Column
+                    header="Rate Spread"
+                    body={(row) => {
+                      const buy = parseFloat(row.avg_purchase_rate) || 0;
+                      const sell = parseFloat(row.avg_sale_rate) || 0;
+                      if (buy > 0 && sell > 0) {
+                        const spread = sell - buy;
+                        return (
+                          <span
+                            className="tabular-nums font-bold"
+                            style={{ color: spread >= 0 ? '#16a34a' : '#dc2626' }}
+                          >
+                            {spread >= 0 ? `+₹${formatINR(spread)}` : `-₹${formatINR(Math.abs(spread))}`}
+                          </span>
+                        );
+                      }
+                      return <span style={{ color: 'var(--text-muted)' }}>-</span>;
+                    }}
+                    style={{ textAlign: 'right', width: '130px' }}
+                  />
+                  <Column
+                    header="Last Activity"
+                    body={(row) => {
+                      if (!row.last_trasction_id) {
+                        return <span style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}>None</span>;
+                      }
+                      const isBuy = row.transaction_type === 'purchase';
+                      return (
+                        <div>
+                          <Tag
+                            value={isBuy ? 'Purchase' : 'Sale'}
+                            severity={isBuy ? 'success' : 'info'}
+                            style={{ fontSize: '0.7rem' }}
+                          />
+                          <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginLeft: '6px' }}>
+                            #{row.last_invoice_no || row.last_trasction_id}
+                          </span>
+                          {row.last_invoice_date && (
+                            <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>
+                              {formatDate(row.last_invoice_date)}
+                            </div>
+                          )}
+                        </div>
+                      );
+                    }}
+                    style={{ width: '180px' }}
+                  />
+                  <Column
+                    field="updated_at"
+                    header="Last Synchronized"
+                    body={(row) => (
+                      <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
+                        {formatDate(row.updated_at)}
+                      </span>
+                    )}
+                    style={{ width: '150px' }}
+                  />
+                </DataTable>
+              )}
             </div>
           </TabPanel>
 
@@ -555,161 +792,319 @@ export default function GSTRatesPage() {
                   marginBottom: '16px',
                 }}
               >
-                <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', flex: 1 }}>
-                  <span className="p-input-icon-left" style={{ width: '240px', maxWidth: '100%' }}>
-                    <i className="pi pi-search" />
-                    <InputText
-                      value={searchMonthly}
-                      onChange={(e) => setSearchMonthly(e.target.value)}
-                      placeholder="Search product..."
-                      style={{ width: '100%' }}
-                    />
-                  </span>
-                  <Dropdown
-                    value={selectedMonth}
-                    options={MONTH_OPTIONS}
-                    onChange={(e) => setSelectedMonth(e.value)}
-                    placeholder="Select Month"
-                    style={{ width: '170px' }}
+                <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', alignItems: 'center' }}>
+                  <SelectButton
+                    value={monthlyRateMode}
+                    options={VIEW_MODE_OPTIONS}
+                    onChange={(e) => e.value && setMonthlyRateMode(e.value)}
+                    unselectable={false}
                   />
-                  <Dropdown
-                    value={selectedYear}
-                    options={YEAR_OPTIONS}
-                    onChange={(e) => setSelectedYear(e.value)}
-                    placeholder="Select Year"
-                    style={{ width: '140px' }}
-                  />
-                  <Dropdown
-                    value={selectedProduct}
-                    options={[
-                      { label: 'All Products', value: null },
-                      ...productsList.map((p) => ({ label: p.name, value: p.id })),
-                    ]}
-                    onChange={(e) => setSelectedProduct(e.value)}
-                    placeholder="All Products"
-                    filter
-                    filterBy="label"
-                    style={{ width: '220px' }}
-                  />
+
+                  {monthlyRateMode === 'product' ? (
+                    <>
+                      <span className="p-input-icon-left" style={{ width: '240px', maxWidth: '100%' }}>
+                        <i className="pi pi-search" />
+                        <InputText
+                          value={searchMonthly}
+                          onChange={(e) => setSearchMonthly(e.target.value)}
+                          placeholder="Search product..."
+                          style={{ width: '100%' }}
+                        />
+                      </span>
+                      <Dropdown
+                        value={selectedMonth}
+                        options={MONTH_OPTIONS}
+                        onChange={(e) => setSelectedMonth(e.value)}
+                        placeholder="Select Month"
+                        style={{ width: '170px' }}
+                      />
+                      <Dropdown
+                        value={selectedYear}
+                        options={YEAR_OPTIONS}
+                        onChange={(e) => setSelectedYear(e.value)}
+                        placeholder="Select Year"
+                        style={{ width: '140px' }}
+                      />
+                      <Dropdown
+                        value={selectedProduct}
+                        options={[
+                          { label: 'All Products', value: null },
+                          ...productsList.map((p) => ({ label: p.name, value: p.id })),
+                        ]}
+                        onChange={(e) => setSelectedProduct(e.value)}
+                        placeholder="All Products"
+                        filter
+                        filterBy="label"
+                        style={{ width: '220px' }}
+                      />
+                    </>
+                  ) : (
+                    <>
+                      <Dropdown
+                        value={selectedMonthType}
+                        options={MONTH_OPTIONS}
+                        onChange={(e) => setSelectedMonthType(e.value)}
+                        placeholder="Select Month"
+                        style={{ width: '170px' }}
+                      />
+                      <Dropdown
+                        value={selectedYearType}
+                        options={YEAR_OPTIONS}
+                        onChange={(e) => setSelectedYearType(e.value)}
+                        placeholder="Select Year"
+                        style={{ width: '140px' }}
+                      />
+                      <Dropdown
+                        value={selectedStoneType}
+                        options={PRODUCT_TYPES}
+                        onChange={(e) => setSelectedStoneType(e.value)}
+                        placeholder="All Stone Types"
+                        style={{ width: '180px' }}
+                      />
+                    </>
+                  )}
                 </div>
               </div>
 
               {/* Monthly Rates Table */}
-              <DataTable
-                value={monthlyRates}
-                loading={loadingMonthly}
-                paginator
-                rows={15}
-                rowsPerPageOptions={[10, 15, 25, 50]}
-                emptyMessage="No monthly rate records found for selected period."
-                className="p-datatable-sm"
-                responsiveLayout="scroll"
-              >
-                <Column
-                  header="#"
-                  body={(_, options) => options.rowIndex + 1}
-                  style={{ width: '50px', textAlign: 'center' }}
-                />
-                <Column
-                  header="Month / Year"
-                  body={(row) => (
-                    <div style={{ fontWeight: 700 }}>
-                      {row.month_name} {row.year}
-                    </div>
-                  )}
-                  style={{ width: '150px' }}
-                />
-                <Column
-                  field="product.name"
-                  header="Product Name"
-                  body={(row) => (
-                    <div>
-                      <div style={{ fontWeight: 600, color: 'var(--text-main)' }}>{row.product?.name}</div>
-                      <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
-                        HSN: {row.product?.hsn_code || '-'}
+              {monthlyRateMode === 'product' ? (
+                <DataTable
+                  value={monthlyRates}
+                  loading={loadingMonthly}
+                  paginator
+                  rows={15}
+                  rowsPerPageOptions={[10, 15, 25, 50]}
+                  emptyMessage="No monthly rate records found for selected period."
+                  className="p-datatable-sm"
+                  responsiveLayout="scroll"
+                >
+                  <Column
+                    header="#"
+                    body={(_, options) => options.rowIndex + 1}
+                    style={{ width: '50px', textAlign: 'center' }}
+                  />
+                  <Column
+                    header="Month / Year"
+                    body={(row) => (
+                      <div style={{ fontWeight: 700 }}>
+                        {row.month_name} {row.year}
                       </div>
-                    </div>
-                  )}
-                  sortable
-                />
-                <Column
-                  field="avg_purchase_rate"
-                  header="Avg Buy Rate"
-                  body={(row) => {
-                    const buy = parseFloat(row.avg_purchase_rate) || 0;
-                    return (
-                      <span className="tabular-nums font-semibold" style={{ color: buy > 0 ? '#16a34a' : 'var(--text-muted)' }}>
-                        {buy > 0 ? `₹${formatINR(buy)}` : '₹0.00'}
+                    )}
+                    style={{ width: '150px' }}
+                  />
+                  <Column
+                    field="product.name"
+                    header="Product Name"
+                    body={(row) => (
+                      <div>
+                        <div style={{ fontWeight: 600, color: 'var(--text-main)' }}>{row.product?.name}</div>
+                        <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+                          HSN: {row.product?.hsn_code || '-'}
+                        </div>
+                      </div>
+                    )}
+                    sortable
+                  />
+                  <Column
+                    field="avg_purchase_rate"
+                    header="Avg Buy Rate"
+                    body={(row) => {
+                      const buy = parseFloat(row.avg_purchase_rate) || 0;
+                      return (
+                        <span className="tabular-nums font-semibold" style={{ color: buy > 0 ? '#16a34a' : 'var(--text-muted)' }}>
+                          {buy > 0 ? `₹${formatINR(buy)}` : '₹0.00'}
+                        </span>
+                      );
+                    }}
+                    style={{ textAlign: 'right', width: '130px' }}
+                  />
+                  <Column
+                    field="total_purchase_qty"
+                    header="Purchased Qty"
+                    body={(row) => (
+                      <span className="tabular-nums" style={{ color: 'var(--text-muted)' }}>
+                        {formatINR(row.total_purchase_qty)}
                       </span>
-                    );
-                  }}
-                  style={{ textAlign: 'right', width: '130px' }}
-                />
-                <Column
-                  field="total_purchase_qty"
-                  header="Purchased Qty"
-                  body={(row) => (
-                    <span className="tabular-nums" style={{ color: 'var(--text-muted)' }}>
-                      {formatINR(row.total_purchase_qty)}
-                    </span>
-                  )}
-                  style={{ textAlign: 'right', width: '130px' }}
-                />
-                <Column
-                  field="total_purchase_amount"
-                  header="Purchase Amount"
-                  body={(row) => (
-                    <span className="tabular-nums" style={{ color: 'var(--text-muted)' }}>
-                      ₹{formatINR(row.total_purchase_amount)}
-                    </span>
-                  )}
-                  style={{ textAlign: 'right', width: '140px' }}
-                />
-                <Column
-                  field="avg_sale_rate"
-                  header="Avg Sell Rate"
-                  body={(row) => {
-                    const sell = parseFloat(row.avg_sale_rate) || 0;
-                    return (
-                      <span className="tabular-nums font-semibold" style={{ color: sell > 0 ? '#2563eb' : 'var(--text-muted)' }}>
-                        {sell > 0 ? `₹${formatINR(sell)}` : '₹0.00'}
+                    )}
+                    style={{ textAlign: 'right', width: '130px' }}
+                  />
+                  <Column
+                    field="total_purchase_amount"
+                    header="Purchase Amount"
+                    body={(row) => (
+                      <span className="tabular-nums" style={{ color: 'var(--text-muted)' }}>
+                        ₹{formatINR(row.total_purchase_amount)}
                       </span>
-                    );
-                  }}
-                  style={{ textAlign: 'right', width: '130px' }}
-                />
-                <Column
-                  field="total_sale_qty"
-                  header="Sold Qty"
-                  body={(row) => (
-                    <span className="tabular-nums" style={{ color: 'var(--text-muted)' }}>
-                      {formatINR(row.total_sale_qty)}
-                    </span>
-                  )}
-                  style={{ textAlign: 'right', width: '120px' }}
-                />
-                <Column
-                  field="total_sale_amount"
-                  header="Sale Amount"
-                  body={(row) => (
-                    <span className="tabular-nums" style={{ color: 'var(--text-muted)' }}>
-                      ₹{formatINR(row.total_sale_amount)}
-                    </span>
-                  )}
-                  style={{ textAlign: 'right', width: '140px' }}
-                />
-                <Column
-                  header="Bills (Buy / Sell)"
-                  body={(row) => (
-                    <div style={{ fontSize: '0.8rem' }}>
-                      <span style={{ color: '#16a34a', fontWeight: 600 }}>{row.purchase_bill_count} buy</span>
-                      <span style={{ color: 'var(--text-muted)', margin: '0 4px' }}>/</span>
-                      <span style={{ color: '#2563eb', fontWeight: 600 }}>{row.sale_bill_count} sell</span>
-                    </div>
-                  )}
-                  style={{ width: '140px', textAlign: 'center' }}
-                />
-              </DataTable>
+                    )}
+                    style={{ textAlign: 'right', width: '140px' }}
+                  />
+                  <Column
+                    field="avg_sale_rate"
+                    header="Avg Sell Rate"
+                    body={(row) => {
+                      const sell = parseFloat(row.avg_sale_rate) || 0;
+                      return (
+                        <span className="tabular-nums font-semibold" style={{ color: sell > 0 ? '#2563eb' : 'var(--text-muted)' }}>
+                          {sell > 0 ? `₹${formatINR(sell)}` : '₹0.00'}
+                        </span>
+                      );
+                    }}
+                    style={{ textAlign: 'right', width: '130px' }}
+                  />
+                  <Column
+                    field="total_sale_qty"
+                    header="Sold Qty"
+                    body={(row) => (
+                      <span className="tabular-nums" style={{ color: 'var(--text-muted)' }}>
+                        {formatINR(row.total_sale_qty)}
+                      </span>
+                    )}
+                    style={{ textAlign: 'right', width: '120px' }}
+                  />
+                  <Column
+                    field="total_sale_amount"
+                    header="Sale Amount"
+                    body={(row) => (
+                      <span className="tabular-nums" style={{ color: 'var(--text-muted)' }}>
+                        ₹{formatINR(row.total_sale_amount)}
+                      </span>
+                    )}
+                    style={{ textAlign: 'right', width: '140px' }}
+                  />
+                  <Column
+                    header="Bills (Buy / Sell)"
+                    body={(row) => (
+                      <div style={{ fontSize: '0.8rem' }}>
+                        <span style={{ color: '#16a34a', fontWeight: 600 }}>{row.purchase_bill_count} buy</span>
+                        <span style={{ color: 'var(--text-muted)', margin: '0 4px' }}>/</span>
+                        <span style={{ color: '#2563eb', fontWeight: 600 }}>{row.sale_bill_count} sell</span>
+                      </div>
+                    )}
+                    style={{ width: '140px', textAlign: 'center' }}
+                  />
+                </DataTable>
+              ) : (
+                <DataTable
+                  value={monthlyRatesByType}
+                  loading={loadingMonthlyType}
+                  paginator
+                  rows={15}
+                  rowsPerPageOptions={[10, 15, 25, 50]}
+                  emptyMessage="No monthly rate records found for stone types in selected period."
+                  className="p-datatable-sm"
+                  responsiveLayout="scroll"
+                >
+                  <Column
+                    header="#"
+                    body={(_, options) => options.rowIndex + 1}
+                    style={{ width: '50px', textAlign: 'center' }}
+                  />
+                  <Column
+                    header="Month / Year"
+                    body={(row) => (
+                      <div style={{ fontWeight: 700 }}>
+                        {row.month_name} {row.year}
+                      </div>
+                    )}
+                    style={{ width: '150px' }}
+                  />
+                  <Column
+                    field="product_type_display"
+                    header="Stone Type"
+                    body={(row) => (
+                      <Tag
+                        value={row.product_type_display || row.product_type?.toUpperCase()}
+                        style={{
+                          background: '#f1f5f9',
+                          color: '#334155',
+                          border: '1px solid #cbd5e1',
+                          fontSize: '0.8rem',
+                          fontWeight: 700,
+                          padding: '4px 8px',
+                        }}
+                      />
+                    )}
+                    style={{ width: '180px' }}
+                  />
+                  <Column
+                    field="avg_purchase_rate"
+                    header="Avg Buy Rate"
+                    body={(row) => {
+                      const buy = parseFloat(row.avg_purchase_rate) || 0;
+                      return (
+                        <span className="tabular-nums font-semibold" style={{ color: buy > 0 ? '#16a34a' : 'var(--text-muted)' }}>
+                          {buy > 0 ? `₹${formatINR(buy)}` : '₹0.00'}
+                        </span>
+                      );
+                    }}
+                    style={{ textAlign: 'right', width: '140px' }}
+                  />
+                  <Column
+                    field="total_purchase_qty"
+                    header="Purchased Qty"
+                    body={(row) => (
+                      <span className="tabular-nums" style={{ color: 'var(--text-muted)' }}>
+                        {formatINR(row.total_purchase_qty)}
+                      </span>
+                    )}
+                    style={{ textAlign: 'right', width: '130px' }}
+                  />
+                  <Column
+                    field="total_purchase_amount"
+                    header="Purchase Amount"
+                    body={(row) => (
+                      <span className="tabular-nums" style={{ color: 'var(--text-muted)' }}>
+                        ₹{formatINR(row.total_purchase_amount)}
+                      </span>
+                    )}
+                    style={{ textAlign: 'right', width: '150px' }}
+                  />
+                  <Column
+                    field="avg_sale_rate"
+                    header="Avg Sell Rate"
+                    body={(row) => {
+                      const sell = parseFloat(row.avg_sale_rate) || 0;
+                      return (
+                        <span className="tabular-nums font-semibold" style={{ color: sell > 0 ? '#2563eb' : 'var(--text-muted)' }}>
+                          {sell > 0 ? `₹${formatINR(sell)}` : '₹0.00'}
+                        </span>
+                      );
+                    }}
+                    style={{ textAlign: 'right', width: '140px' }}
+                  />
+                  <Column
+                    field="total_sale_qty"
+                    header="Sold Qty"
+                    body={(row) => (
+                      <span className="tabular-nums" style={{ color: 'var(--text-muted)' }}>
+                        {formatINR(row.total_sale_qty)}
+                      </span>
+                    )}
+                    style={{ textAlign: 'right', width: '120px' }}
+                  />
+                  <Column
+                    field="total_sale_amount"
+                    header="Sale Amount"
+                    body={(row) => (
+                      <span className="tabular-nums" style={{ color: 'var(--text-muted)' }}>
+                        ₹{formatINR(row.total_sale_amount)}
+                      </span>
+                    )}
+                    style={{ textAlign: 'right', width: '150px' }}
+                  />
+                  <Column
+                    header="Bills (Buy / Sell)"
+                    body={(row) => (
+                      <div style={{ fontSize: '0.8rem' }}>
+                        <span style={{ color: '#16a34a', fontWeight: 600 }}>{row.purchase_bill_count} buy</span>
+                        <span style={{ color: 'var(--text-muted)', margin: '0 4px' }}>/</span>
+                        <span style={{ color: '#2563eb', fontWeight: 600 }}>{row.sale_bill_count} sell</span>
+                      </div>
+                    )}
+                    style={{ width: '140px', textAlign: 'center' }}
+                  />
+                </DataTable>
+              )}
             </div>
           </TabPanel>
         </TabView>

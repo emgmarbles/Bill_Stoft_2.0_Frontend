@@ -131,8 +131,18 @@ export const gstService = {
     return response.data;
   },
 
+  getCurrentStockByType: async (params = {}) => {
+    const response = await api.get('/v1/gst/current-stock-by-type/', { params });
+    return response.data;
+  },
+
   getMonthlyStock: async (params = {}) => {
     const response = await api.get('/v1/gst/monthly-stock/', { params });
+    return response.data;
+  },
+
+  getMonthlyStockByType: async (params = {}) => {
+    const response = await api.get('/v1/gst/monthly-stock-by-type/', { params });
     return response.data;
   },
 
@@ -147,8 +157,18 @@ export const gstService = {
     return response.data;
   },
 
+  getCurrentRatesByType: async (params = {}) => {
+    const response = await api.get('/v1/gst/current-rates-by-type/', { params });
+    return response.data;
+  },
+
   getMonthlyRates: async (params = {}) => {
     const response = await api.get('/v1/gst/monthly-rates/', { params });
+    return response.data;
+  },
+
+  getMonthlyRatesByType: async (params = {}) => {
+    const response = await api.get('/v1/gst/monthly-rates-by-type/', { params });
     return response.data;
   },
 

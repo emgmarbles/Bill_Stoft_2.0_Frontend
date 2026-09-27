@@ -7,9 +7,15 @@ import { Dropdown } from 'primereact/dropdown';
 import { Tag } from 'primereact/tag';
 import { Toast } from 'primereact/toast';
 import { TabView, TabPanel } from 'primereact/tabview';
+import { SelectButton } from 'primereact/selectbutton';
 import gstService from '../../services/gstService';
 import useDebounce from '../../hooks/useDebounce';
 import { formatINR, formatDate } from '../../utils/formatters';
+
+const VIEW_MODE_OPTIONS = [
+  { label: 'By Product', value: 'product' },
+  { label: 'By Stone Type', value: 'type' },
+];
 
 const PRODUCT_TYPES = [
   { label: 'All Stone Types', value: null },
@@ -48,12 +54,20 @@ export default function GSTStockPage() {
   const [activeIndex, setActiveIndex] = useState(0);
   const toast = useRef(null);
 
+  // View mode toggles
+  const [currentStockMode, setCurrentStockMode] = useState('product');
+  const [monthlyStockMode, setMonthlyStockMode] = useState('product');
+
   // --- Current Stock State ---
   const [currentStocks, setCurrentStocks] = useState([]);
   const [loadingCurrent, setLoadingCurrent] = useState(true);
   const [searchCurrent, setSearchCurrent] = useState('');
   const debouncedSearchCurrent = useDebounce(searchCurrent, 350);
   const [typeFilter, setTypeFilter] = useState(null);
+
+  // --- Current Stock State (By Stone Type) ---
+  const [currentStocksByType, setCurrentStocksByType] = useState([]);
+  const [loadingCurrentType, setLoadingCurrentType] = useState(false);
 
   // --- Monthly Stock State ---
   const [monthlyStocks, setMonthlyStocks] = useState([]);
@@ -64,6 +78,13 @@ export default function GSTStockPage() {
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
   const [selectedProduct, setSelectedProduct] = useState(null);
   const [productsList, setProductsList] = useState([]);
+
+  // --- Monthly Stock State (By Stone Type) ---
+  const [monthlyStocksByType, setMonthlyStocksByType] = useState([]);
+  const [loadingMonthlyType, setLoadingMonthlyType] = useState(false);
+  const [selectedMonthType, setSelectedMonthType] = useState(new Date().getMonth() + 1);
+  const [selectedYearType, setSelectedYearType] = useState(new Date().getFullYear());
+  const [selectedStoneType, setSelectedStoneType] = useState(null);
 
   // Recalculating state
   const [recalculating, setRecalculating] = useState(false);
@@ -79,7 +100,7 @@ export default function GSTStockPage() {
       .catch((err) => console.error('Failed to load products for stock filter', err));
   }, []);
 
-  // Fetch Current Stocks
+  // Fetch Current Stocks (By Product)
   const fetchCurrentStocks = useCallback(async () => {
     setLoadingCurrent(true);
     try {
@@ -103,7 +124,27 @@ export default function GSTStockPage() {
     }
   }, [debouncedSearchCurrent, typeFilter]);
 
-  // Fetch Monthly Stocks
+  // Fetch Current Stocks (By Stone Type)
+  const fetchCurrentStocksByType = useCallback(async () => {
+    setLoadingCurrentType(true);
+    try {
+      const res = await gstService.getCurrentStockByType();
+      const list = Array.isArray(res) ? res : res?.results || [];
+      setCurrentStocksByType(list);
+    } catch (err) {
+      console.error('Failed to fetch current stock by stone type', err);
+      toast.current?.show({
+        severity: 'error',
+        summary: 'Error',
+        detail: 'Failed to load current stock balances by stone type.',
+        life: 4000,
+      });
+    } finally {
+      setLoadingCurrentType(false);
+    }
+  }, []);
+
+  // Fetch Monthly Stocks (By Product)
   const fetchMonthlyStocks = useCallback(async () => {
     setLoadingMonthly(true);
     try {
@@ -129,13 +170,46 @@ export default function GSTStockPage() {
     }
   }, [debouncedSearchMonthly, selectedMonth, selectedYear, selectedProduct]);
 
+  // Fetch Monthly Stocks (By Stone Type)
+  const fetchMonthlyStocksByType = useCallback(async () => {
+    setLoadingMonthlyType(true);
+    try {
+      const params = {
+        ...(selectedMonthType && { month: selectedMonthType }),
+        ...(selectedYearType && { year: selectedYearType }),
+        ...(selectedStoneType && { product_type: selectedStoneType }),
+      };
+      const res = await gstService.getMonthlyStockByType(params);
+      const list = Array.isArray(res) ? res : res?.results || [];
+      setMonthlyStocksByType(list);
+    } catch (err) {
+      console.error('Failed to fetch monthly stock by stone type', err);
+      toast.current?.show({
+        severity: 'error',
+        summary: 'Error',
+        detail: 'Failed to load monthly stock ledger by stone type.',
+        life: 4000,
+      });
+    } finally {
+      setLoadingMonthlyType(false);
+    }
+  }, [selectedMonthType, selectedYearType, selectedStoneType]);
+
   useEffect(() => {
     fetchCurrentStocks();
   }, [fetchCurrentStocks]);
 
   useEffect(() => {
+    fetchCurrentStocksByType();
+  }, [fetchCurrentStocksByType]);
+
+  useEffect(() => {
     fetchMonthlyStocks();
   }, [fetchMonthlyStocks]);
+
+  useEffect(() => {
+    fetchMonthlyStocksByType();
+  }, [fetchMonthlyStocksByType]);
 
   // Handle Recalculate Stock
   const handleRecalculate = async () => {
@@ -149,7 +223,9 @@ export default function GSTStockPage() {
         life: 4000,
       });
       fetchCurrentStocks();
+      fetchCurrentStocksByType();
       fetchMonthlyStocks();
+      fetchMonthlyStocksByType();
     } catch (err) {
       console.error('Failed to recalculate stock', err);
       toast.current?.show({
@@ -164,11 +240,13 @@ export default function GSTStockPage() {
   };
 
   // KPIs
-  const totalProducts = currentStocks.length;
-  const totalNetBalance = currentStocks.reduce(
+  const activeStockList = currentStockMode === 'product' ? currentStocks : currentStocksByType;
+  const totalItemCount = activeStockList.length;
+  const totalNetBalance = activeStockList.reduce(
     (acc, curr) => acc + (parseFloat(curr.balance) || 0),
     0
   );
+  const totalLedgerCount = monthlyStockMode === 'product' ? monthlyStocks.length : monthlyStocksByType.length;
 
   // Column templates - Current Stock
   const balanceBodyTemplate = (row) => {
@@ -292,10 +370,10 @@ export default function GSTStockPage() {
       >
         <div style={{ background: '#fff', padding: '16px 20px', borderRadius: '10px', border: '1px solid #e2e8f0', boxShadow: '0 1px 3px rgba(0,0,0,0.05)' }}>
           <div style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase' }}>
-            Tracked Products
+            {currentStockMode === 'product' ? 'Tracked Products' : 'Tracked Stone Types'}
           </div>
           <div style={{ fontSize: '1.65rem', fontWeight: 800, color: 'var(--text-main)', marginTop: '6px' }} className="tabular-nums">
-            {totalProducts}
+            {totalItemCount}
           </div>
         </div>
 
@@ -313,7 +391,7 @@ export default function GSTStockPage() {
             Monthly Ledger Entries
           </div>
           <div style={{ fontSize: '1.65rem', fontWeight: 800, color: 'var(--primary-color)', marginTop: '6px' }} className="tabular-nums">
-            {monthlyStocks.length}
+            {totalLedgerCount}
           </div>
         </div>
       </div>
@@ -335,81 +413,152 @@ export default function GSTStockPage() {
                   marginBottom: '16px',
                 }}
               >
-                <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', flex: 1 }}>
-                  <span className="p-input-icon-left" style={{ width: '280px', maxWidth: '100%' }}>
-                    <i className="pi pi-search" />
-                    <InputText
-                      value={searchCurrent}
-                      onChange={(e) => setSearchCurrent(e.target.value)}
-                      placeholder="Search product or HSN..."
-                      style={{ width: '100%' }}
-                    />
-                  </span>
-                  <Dropdown
-                    value={typeFilter}
-                    options={PRODUCT_TYPES}
-                    onChange={(e) => setTypeFilter(e.value)}
-                    placeholder="All Stone Types"
-                    style={{ width: '180px' }}
+                <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', alignItems: 'center' }}>
+                  <SelectButton
+                    value={currentStockMode}
+                    options={VIEW_MODE_OPTIONS}
+                    onChange={(e) => e.value && setCurrentStockMode(e.value)}
+                    unselectable={false}
                   />
+
+                  {currentStockMode === 'product' && (
+                    <>
+                      <span className="p-input-icon-left" style={{ width: '280px', maxWidth: '100%' }}>
+                        <i className="pi pi-search" />
+                        <InputText
+                          value={searchCurrent}
+                          onChange={(e) => setSearchCurrent(e.target.value)}
+                          placeholder="Search product or HSN..."
+                          style={{ width: '100%' }}
+                        />
+                      </span>
+                      <Dropdown
+                        value={typeFilter}
+                        options={PRODUCT_TYPES}
+                        onChange={(e) => setTypeFilter(e.value)}
+                        placeholder="All Stone Types"
+                        style={{ width: '180px' }}
+                      />
+                    </>
+                  )}
                 </div>
               </div>
 
               {/* Table */}
-              <DataTable
-                value={currentStocks}
-                loading={loadingCurrent}
-                paginator
-                rows={15}
-                rowsPerPageOptions={[10, 15, 25, 50]}
-                emptyMessage="No current stock records found."
-                className="p-datatable-sm"
-                responsiveLayout="scroll"
-              >
-                <Column
-                  header="#"
-                  body={(_, options) => options.rowIndex + 1}
-                  style={{ width: '50px', textAlign: 'center' }}
-                />
-                <Column
-                  field="product.name"
-                  header="Product Name"
-                  body={(row) => (
-                    <div>
-                      <div style={{ fontWeight: 700, color: 'var(--text-main)' }}>{row.product?.name}</div>
-                      <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>HSN: {row.product?.hsn_code || '-'}</div>
-                    </div>
-                  )}
-                  sortable
-                />
-                <Column
-                  header="Stone Type"
-                  body={productTypeBodyTemplate}
-                  style={{ width: '140px' }}
-                />
-                <Column
-                  field="balance"
-                  header="Current Balance"
-                  body={balanceBodyTemplate}
-                  sortable
-                  style={{ width: '220px' }}
-                />
-                <Column
-                  header="Last Transaction"
-                  body={lastTransBodyTemplate}
-                  style={{ width: '220px' }}
-                />
-                <Column
-                  field="updated_at"
-                  header="Last Synchronized"
-                  body={(row) => (
-                    <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
-                      {formatDate(row.updated_at)}
-                    </span>
-                  )}
-                  style={{ width: '150px' }}
-                />
-              </DataTable>
+              {currentStockMode === 'product' ? (
+                <DataTable
+                  value={currentStocks}
+                  loading={loadingCurrent}
+                  paginator
+                  rows={15}
+                  rowsPerPageOptions={[10, 15, 25, 50]}
+                  emptyMessage="No current stock records found."
+                  className="p-datatable-sm"
+                  responsiveLayout="scroll"
+                >
+                  <Column
+                    header="#"
+                    body={(_, options) => options.rowIndex + 1}
+                    style={{ width: '50px', textAlign: 'center' }}
+                  />
+                  <Column
+                    field="product.name"
+                    header="Product Name"
+                    body={(row) => (
+                      <div>
+                        <div style={{ fontWeight: 700, color: 'var(--text-main)' }}>{row.product?.name}</div>
+                        <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>HSN: {row.product?.hsn_code || '-'}</div>
+                      </div>
+                    )}
+                    sortable
+                  />
+                  <Column
+                    header="Stone Type"
+                    body={productTypeBodyTemplate}
+                    style={{ width: '140px' }}
+                  />
+                  <Column
+                    field="balance"
+                    header="Current Balance"
+                    body={balanceBodyTemplate}
+                    sortable
+                    style={{ width: '220px' }}
+                  />
+                  <Column
+                    header="Last Transaction"
+                    body={lastTransBodyTemplate}
+                    style={{ width: '220px' }}
+                  />
+                  <Column
+                    field="updated_at"
+                    header="Last Synchronized"
+                    body={(row) => (
+                      <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
+                        {formatDate(row.updated_at)}
+                      </span>
+                    )}
+                    style={{ width: '150px' }}
+                  />
+                </DataTable>
+              ) : (
+                <DataTable
+                  value={currentStocksByType}
+                  loading={loadingCurrentType}
+                  paginator
+                  rows={15}
+                  rowsPerPageOptions={[10, 15, 25, 50]}
+                  emptyMessage="No stone type current stock records found."
+                  className="p-datatable-sm"
+                  responsiveLayout="scroll"
+                >
+                  <Column
+                    header="#"
+                    body={(_, options) => options.rowIndex + 1}
+                    style={{ width: '50px', textAlign: 'center' }}
+                  />
+                  <Column
+                    field="product_type_display"
+                    header="Stone Type"
+                    body={(row) => (
+                      <Tag
+                        value={row.product_type_display || row.product_type?.toUpperCase()}
+                        style={{
+                          background: '#f1f5f9',
+                          color: '#334155',
+                          border: '1px solid #cbd5e1',
+                          fontSize: '0.8rem',
+                          fontWeight: 700,
+                          padding: '4px 8px',
+                        }}
+                      />
+                    )}
+                    sortable
+                    style={{ width: '200px' }}
+                  />
+                  <Column
+                    field="balance"
+                    header="Current Balance"
+                    body={balanceBodyTemplate}
+                    sortable
+                    style={{ width: '240px' }}
+                  />
+                  <Column
+                    header="Last Transaction"
+                    body={lastTransBodyTemplate}
+                    style={{ width: '240px' }}
+                  />
+                  <Column
+                    field="updated_at"
+                    header="Last Synchronized"
+                    body={(row) => (
+                      <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
+                        {formatDate(row.updated_at)}
+                      </span>
+                    )}
+                    style={{ width: '150px' }}
+                  />
+                </DataTable>
+              )}
             </div>
           </TabPanel>
 
@@ -427,131 +576,261 @@ export default function GSTStockPage() {
                   marginBottom: '16px',
                 }}
               >
-                <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', flex: 1 }}>
-                  <span className="p-input-icon-left" style={{ width: '240px', maxWidth: '100%' }}>
-                    <i className="pi pi-search" />
-                    <InputText
-                      value={searchMonthly}
-                      onChange={(e) => setSearchMonthly(e.target.value)}
-                      placeholder="Search product..."
-                      style={{ width: '100%' }}
-                    />
-                  </span>
-                  <Dropdown
-                    value={selectedMonth}
-                    options={MONTH_OPTIONS}
-                    onChange={(e) => setSelectedMonth(e.value)}
-                    placeholder="Select Month"
-                    style={{ width: '170px' }}
+                <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', alignItems: 'center' }}>
+                  <SelectButton
+                    value={monthlyStockMode}
+                    options={VIEW_MODE_OPTIONS}
+                    onChange={(e) => e.value && setMonthlyStockMode(e.value)}
+                    unselectable={false}
                   />
-                  <Dropdown
-                    value={selectedYear}
-                    options={YEAR_OPTIONS}
-                    onChange={(e) => setSelectedYear(e.value)}
-                    placeholder="Select Year"
-                    style={{ width: '140px' }}
-                  />
-                  <Dropdown
-                    value={selectedProduct}
-                    options={[
-                      { label: 'All Products', value: null },
-                      ...productsList.map((p) => ({ label: p.name, value: p.id })),
-                    ]}
-                    onChange={(e) => setSelectedProduct(e.value)}
-                    placeholder="All Products"
-                    filter
-                    filterBy="label"
-                    style={{ width: '220px' }}
-                  />
+
+                  {monthlyStockMode === 'product' ? (
+                    <>
+                      <span className="p-input-icon-left" style={{ width: '240px', maxWidth: '100%' }}>
+                        <i className="pi pi-search" />
+                        <InputText
+                          value={searchMonthly}
+                          onChange={(e) => setSearchMonthly(e.target.value)}
+                          placeholder="Search product..."
+                          style={{ width: '100%' }}
+                        />
+                      </span>
+                      <Dropdown
+                        value={selectedMonth}
+                        options={MONTH_OPTIONS}
+                        onChange={(e) => setSelectedMonth(e.value)}
+                        placeholder="Select Month"
+                        style={{ width: '170px' }}
+                      />
+                      <Dropdown
+                        value={selectedYear}
+                        options={YEAR_OPTIONS}
+                        onChange={(e) => setSelectedYear(e.value)}
+                        placeholder="Select Year"
+                        style={{ width: '140px' }}
+                      />
+                      <Dropdown
+                        value={selectedProduct}
+                        options={[
+                          { label: 'All Products', value: null },
+                          ...productsList.map((p) => ({ label: p.name, value: p.id })),
+                        ]}
+                        onChange={(e) => setSelectedProduct(e.value)}
+                        placeholder="All Products"
+                        filter
+                        filterBy="label"
+                        style={{ width: '220px' }}
+                      />
+                    </>
+                  ) : (
+                    <>
+                      <Dropdown
+                        value={selectedMonthType}
+                        options={MONTH_OPTIONS}
+                        onChange={(e) => setSelectedMonthType(e.value)}
+                        placeholder="Select Month"
+                        style={{ width: '170px' }}
+                      />
+                      <Dropdown
+                        value={selectedYearType}
+                        options={YEAR_OPTIONS}
+                        onChange={(e) => setSelectedYearType(e.value)}
+                        placeholder="Select Year"
+                        style={{ width: '140px' }}
+                      />
+                      <Dropdown
+                        value={selectedStoneType}
+                        options={PRODUCT_TYPES}
+                        onChange={(e) => setSelectedStoneType(e.value)}
+                        placeholder="All Stone Types"
+                        style={{ width: '180px' }}
+                      />
+                    </>
+                  )}
                 </div>
               </div>
 
               {/* Ledger Table */}
-              <DataTable
-                value={monthlyStocks}
-                loading={loadingMonthly}
-                paginator
-                rows={15}
-                rowsPerPageOptions={[10, 15, 25, 50]}
-                emptyMessage="No monthly stock ledger records found for selected period."
-                className="p-datatable-sm"
-                responsiveLayout="scroll"
-              >
-                <Column
-                  header="#"
-                  body={(_, options) => options.rowIndex + 1}
-                  style={{ width: '50px', textAlign: 'center' }}
-                />
-                <Column
-                  header="Month / Year"
-                  body={(row) => (
-                    <div style={{ fontWeight: 700 }}>
-                      {row.month_name} {row.year}
-                    </div>
-                  )}
-                  style={{ width: '150px' }}
-                />
-                <Column
-                  field="product.name"
-                  header="Product Name"
-                  body={(row) => (
-                    <div>
-                      <div style={{ fontWeight: 600, color: 'var(--text-main)' }}>{row.product?.name}</div>
-                      <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>HSN: {row.product?.hsn_code || '-'}</div>
-                    </div>
-                  )}
-                  sortable
-                />
-                <Column
-                  field="opening"
-                  header="Opening"
-                  body={(row) => (
-                    <span className="tabular-nums font-medium" style={{ color: 'var(--text-muted)' }}>
-                      {formatINR(row.opening)}
-                    </span>
-                  )}
-                  style={{ textAlign: 'right', width: '120px' }}
-                />
-                <Column
-                  field="total_purchase"
-                  header="Inward (+ Buy)"
-                  body={(row) => {
-                    const buy = parseFloat(row.total_purchase) || 0;
-                    return (
-                      <span className="tabular-nums font-semibold" style={{ color: buy > 0 ? '#16a34a' : 'var(--text-muted)' }}>
-                        {buy > 0 ? `+${formatINR(buy)}` : '0.00'}
+              {monthlyStockMode === 'product' ? (
+                <DataTable
+                  value={monthlyStocks}
+                  loading={loadingMonthly}
+                  paginator
+                  rows={15}
+                  rowsPerPageOptions={[10, 15, 25, 50]}
+                  emptyMessage="No monthly stock ledger records found for selected period."
+                  className="p-datatable-sm"
+                  responsiveLayout="scroll"
+                >
+                  <Column
+                    header="#"
+                    body={(_, options) => options.rowIndex + 1}
+                    style={{ width: '50px', textAlign: 'center' }}
+                  />
+                  <Column
+                    header="Month / Year"
+                    body={(row) => (
+                      <div style={{ fontWeight: 700 }}>
+                        {row.month_name} {row.year}
+                      </div>
+                    )}
+                    style={{ width: '150px' }}
+                  />
+                  <Column
+                    field="product.name"
+                    header="Product Name"
+                    body={(row) => (
+                      <div>
+                        <div style={{ fontWeight: 600, color: 'var(--text-main)' }}>{row.product?.name}</div>
+                        <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>HSN: {row.product?.hsn_code || '-'}</div>
+                      </div>
+                    )}
+                    sortable
+                  />
+                  <Column
+                    field="opening"
+                    header="Opening"
+                    body={(row) => (
+                      <span className="tabular-nums font-medium" style={{ color: 'var(--text-muted)' }}>
+                        {formatINR(row.opening)}
                       </span>
-                    );
-                  }}
-                  style={{ textAlign: 'right', width: '140px' }}
-                />
-                <Column
-                  field="total_sale"
-                  header="Outward (- Sell)"
-                  body={(row) => {
-                    const sell = parseFloat(row.total_sale) || 0;
-                    return (
-                      <span className="tabular-nums font-semibold" style={{ color: sell > 0 ? '#2563eb' : 'var(--text-muted)' }}>
-                        {sell > 0 ? `-${formatINR(sell)}` : '0.00'}
+                    )}
+                    style={{ textAlign: 'right', width: '120px' }}
+                  />
+                  <Column
+                    field="total_purchase"
+                    header="Inward (+ Buy)"
+                    body={(row) => {
+                      const buy = parseFloat(row.total_purchase) || 0;
+                      return (
+                        <span className="tabular-nums font-semibold" style={{ color: buy > 0 ? '#16a34a' : 'var(--text-muted)' }}>
+                          {buy > 0 ? `+${formatINR(buy)}` : '0.00'}
+                        </span>
+                      );
+                    }}
+                    style={{ textAlign: 'right', width: '140px' }}
+                  />
+                  <Column
+                    field="total_sale"
+                    header="Outward (- Sell)"
+                    body={(row) => {
+                      const sell = parseFloat(row.total_sale) || 0;
+                      return (
+                        <span className="tabular-nums font-semibold" style={{ color: sell > 0 ? '#2563eb' : 'var(--text-muted)' }}>
+                          {sell > 0 ? `-${formatINR(sell)}` : '0.00'}
+                        </span>
+                      );
+                    }}
+                    style={{ textAlign: 'right', width: '140px' }}
+                  />
+                  <Column
+                    field="closing"
+                    header="Closing Balance"
+                    body={(row) => {
+                      const closeVal = parseFloat(row.closing) || 0;
+                      return (
+                        <span className="tabular-nums font-bold" style={{ color: closeVal >= 0 ? '#0f172a' : '#dc2626' }}>
+                          {formatINR(closeVal)}
+                        </span>
+                      );
+                    }}
+                    style={{ textAlign: 'right', width: '140px' }}
+                  />
+                </DataTable>
+              ) : (
+                <DataTable
+                  value={monthlyStocksByType}
+                  loading={loadingMonthlyType}
+                  paginator
+                  rows={15}
+                  rowsPerPageOptions={[10, 15, 25, 50]}
+                  emptyMessage="No monthly stock ledger records found for stone types in selected period."
+                  className="p-datatable-sm"
+                  responsiveLayout="scroll"
+                >
+                  <Column
+                    header="#"
+                    body={(_, options) => options.rowIndex + 1}
+                    style={{ width: '50px', textAlign: 'center' }}
+                  />
+                  <Column
+                    header="Month / Year"
+                    body={(row) => (
+                      <div style={{ fontWeight: 700 }}>
+                        {row.month_name} {row.year}
+                      </div>
+                    )}
+                    style={{ width: '150px' }}
+                  />
+                  <Column
+                    field="product_type_display"
+                    header="Stone Type"
+                    body={(row) => (
+                      <Tag
+                        value={row.product_type_display || row.product_type?.toUpperCase()}
+                        style={{
+                          background: '#f1f5f9',
+                          color: '#334155',
+                          border: '1px solid #cbd5e1',
+                          fontSize: '0.8rem',
+                          fontWeight: 700,
+                          padding: '4px 8px',
+                        }}
+                      />
+                    )}
+                    style={{ width: '180px' }}
+                  />
+                  <Column
+                    field="opening"
+                    header="Opening"
+                    body={(row) => (
+                      <span className="tabular-nums font-medium" style={{ color: 'var(--text-muted)' }}>
+                        {formatINR(row.opening)}
                       </span>
-                    );
-                  }}
-                  style={{ textAlign: 'right', width: '140px' }}
-                />
-                <Column
-                  field="closing"
-                  header="Closing Balance"
-                  body={(row) => {
-                    const closeVal = parseFloat(row.closing) || 0;
-                    return (
-                      <span className="tabular-nums font-bold" style={{ color: closeVal >= 0 ? '#0f172a' : '#dc2626' }}>
-                        {formatINR(closeVal)}
-                      </span>
-                    );
-                  }}
-                  style={{ textAlign: 'right', width: '140px' }}
-                />
-              </DataTable>
+                    )}
+                    style={{ textAlign: 'right', width: '140px' }}
+                  />
+                  <Column
+                    field="total_purchase"
+                    header="Inward (+ Buy)"
+                    body={(row) => {
+                      const buy = parseFloat(row.total_purchase) || 0;
+                      return (
+                        <span className="tabular-nums font-semibold" style={{ color: buy > 0 ? '#16a34a' : 'var(--text-muted)' }}>
+                          {buy > 0 ? `+${formatINR(buy)}` : '0.00'}
+                        </span>
+                      );
+                    }}
+                    style={{ textAlign: 'right', width: '150px' }}
+                  />
+                  <Column
+                    field="total_sale"
+                    header="Outward (- Sell)"
+                    body={(row) => {
+                      const sell = parseFloat(row.total_sale) || 0;
+                      return (
+                        <span className="tabular-nums font-semibold" style={{ color: sell > 0 ? '#2563eb' : 'var(--text-muted)' }}>
+                          {sell > 0 ? `-${formatINR(sell)}` : '0.00'}
+                        </span>
+                      );
+                    }}
+                    style={{ textAlign: 'right', width: '150px' }}
+                  />
+                  <Column
+                    field="closing"
+                    header="Closing Balance"
+                    body={(row) => {
+                      const closeVal = parseFloat(row.closing) || 0;
+                      return (
+                        <span className="tabular-nums font-bold" style={{ color: closeVal >= 0 ? '#0f172a' : '#dc2626' }}>
+                          {formatINR(closeVal)}
+                        </span>
+                      );
+                    }}
+                    style={{ textAlign: 'right', width: '150px' }}
+                  />
+                </DataTable>
+              )}
             </div>
           </TabPanel>
         </TabView>
